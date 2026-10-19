@@ -33,32 +33,57 @@ class TwitterActions:
             pass
         return False
 
-    def post_tweet(self, text: str) -> Dict[str, Any]:
+    def post_tweet(self, text: str, media_path: Optional[str] = None) -> Dict[str, Any]:
         """
-        Posts a new tweet without using Twitter API.
+        Posts a new tweet with optional image/chart attachment without using Twitter API.
         """
         try:
             print(f"[+] Tweet atılıyor: {text[:60]}...")
             self.page.goto("https://x.com/compose/post", wait_until="domcontentloaded", timeout=25000)
             human_delay(2, 4)
 
-            # Wait for textarea
-            textarea = self.page.locator("div[data-testid='tweetTextarea_0']").first
-            textarea.wait_for(state="visible", timeout=15000)
+            # Wait for textarea (multiple fallback selectors)
+            textarea = None
+            selectors = [
+                "div[data-testid='tweetTextarea_0']",
+                "div[role='textbox'][aria-label*='Post text']",
+                "div[role='textbox'][aria-label*='Tweet text']",
+                "div[data-contents='true']"
+            ]
+            for sel in selectors:
+                loc = self.page.locator(sel).first
+                if loc.count() > 0:
+                    textarea = loc
+                    break
+
+            if not textarea:
+                return {"success": False, "error": "Tweet metin yazma alanı bulunamadı"}
+
             textarea.click()
             human_delay(0.5, 1.2)
-
-            # Type text (using fill or press_sequentially for human feel)
-            # For longer text, fill is faster and reliable, then trigger input
             textarea.fill(text)
             human_delay(1, 2)
+
+            # Attach media if provided (e.g. chart image)
+            if media_path and os.path.exists(media_path):
+                print(f"[+] Fotoğraf/Grafik ekleniyor: {media_path}")
+                file_input = self.page.locator("input[data-testid='fileInput']").first
+                if file_input.count() == 0:
+                    file_input = self.page.locator("input[type='file']").first
+                
+                if file_input.count() > 0:
+                    file_input.set_input_files(media_path)
+                    human_delay(3, 5)  # Wait for upload to process
+                    print("[✓] Fotoğraf başarıyla yüklendi!")
+                else:
+                    print("[!] Dosya yükleme inputu bulunamadı, metin olarak devam ediliyor.")
 
             # Find Post button
             post_button = self.page.locator("button[data-testid='tweetButton']").first
             if not post_button.is_visible():
                 post_button = self.page.locator("button[data-testid='tweetButtonInline']").first
 
-            post_button.wait_for(state="visible", timeout=8000)
+            post_button.wait_for(state="visible", timeout=10000)
             
             # Check if button is enabled
             if post_button.is_disabled():
@@ -66,13 +91,13 @@ class TwitterActions:
 
             post_button.click()
             print("[+] Gönder butonuna tıklandı, onay bekleniyor...")
-            human_delay(3, 5)
+            human_delay(3, 6)
 
-            # Check if compose modal closed or redirect occurred
-            return {"success": True, "text": text}
+            return {"success": True, "text": text, "has_media": bool(media_path)}
         except PlaywrightTimeoutError:
             return {"success": False, "error": "Zaman aşımı: Tweet alanı veya butonu bulunamadı"}
         except Exception as e:
+            return {"success": False, "error": str(e)}
             return {"success": False, "error": str(e)}
 
     def like_tweet(self, tweet_url: str) -> Dict[str, Any]:

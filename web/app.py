@@ -232,6 +232,8 @@ class PostTweetPayload(BaseModel):
     account: str
     text: str
     auto_boost: bool = True
+    attach_chart: bool = False
+    chart_symbol: Optional[str] = "THYAO"
 
 @app.post("/api/tweet/post")
 async def post_tweet_endpoint(payload: PostTweetPayload, background_tasks: BackgroundTasks):
@@ -239,7 +241,15 @@ async def post_tweet_endpoint(payload: PostTweetPayload, background_tasks: Backg
     if not browser_mgr.has_session(uname):
         return JSONResponse({"success": False, "error": f"@{uname} için aktif oturum yok. Önce bağlayın."}, status_code=400)
 
-    log_event(f"@{uname} üzerinden tweet gönderimi başlatılıyor...", "info")
+    # Prepare chart image if requested
+    media_file_path = None
+    if payload.attach_chart and payload.chart_symbol:
+        chart_url = chart_service.generate_chart_image(payload.chart_symbol)
+        if chart_url:
+            filename = os.path.basename(chart_url.split("?")[0])
+            media_file_path = str(STATIC_DIR / "charts" / filename)
+
+    log_event(f"@{uname} üzerinden tweet gönderimi başlatılıyor{' (Grafikli)' if media_file_path else ''}...", "info")
 
     def run_post_and_boost():
         cfg = get_config()
@@ -248,14 +258,14 @@ async def post_tweet_endpoint(payload: PostTweetPayload, background_tasks: Backg
         pod_mgr = EngagementPodManager(browser_mgr, ai_gen)
         
         if payload.auto_boost and helpers:
-            res = pod_mgr.post_and_cross_boost(uname, helpers, custom_tweet=payload.text, headless=True)
+            res = pod_mgr.post_and_cross_boost(uname, helpers, custom_tweet=payload.text, media_path=media_file_path, headless=True)
             log_event(f"Tweet paylaşıldı ve {len(helpers)} hesapla kasıldı!", "success")
         else:
             context = browser_mgr.launch_context(uname, headless=True)
             try:
                 page = context.new_page()
                 actions = TwitterActions(page)
-                res = actions.post_tweet(payload.text)
+                res = actions.post_tweet(payload.text, media_path=media_file_path)
                 if res.get("success"):
                     log_event(f"Tweet başarıyla paylaşıldı: {payload.text[:50]}...", "success")
                 else:
@@ -266,6 +276,21 @@ async def post_tweet_endpoint(payload: PostTweetPayload, background_tasks: Backg
 
     background_tasks.add_task(run_post_and_boost)
     return {"success": True, "message": "Tweet gönderim ve kasma işlemi arka planda başlatıldı"}
+
+class PersonaSettingsPayload(BaseModel):
+    preset: str = "analyst"  # 'analyst', 'trader', 'guru', 'custom'
+    custom_prompt: Optional[str] = None
+
+@app.post("/api/settings/persona")
+async def save_persona_settings(payload: PersonaSettingsPayload):
+    cfg = get_config()
+    cfg["persona_settings"] = {
+        "preset": payload.preset,
+        "custom_prompt": payload.custom_prompt or ""
+    }
+    save_config(cfg)
+    log_event(f"Yapay Zeka karakteri güncellendi: {payload.preset}", "success")
+    return {"success": True, "persona_settings": cfg["persona_settings"]}
 
 class BoostTweetPayload(BaseModel):
     tweet_url: str

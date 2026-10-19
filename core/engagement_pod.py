@@ -106,16 +106,19 @@ class EngagementPodManager:
         poster_account: str,
         helper_accounts: List[str],
         custom_tweet: Optional[str] = None,
+        media_path: Optional[str] = None,
         headless: bool = True
     ) -> Dict[str, Any]:
         """
-        1. poster_account posts a fresh AI-generated BIST tweet.
+        1. poster_account posts a fresh AI-generated BIST tweet (with optional image/chart).
         2. helper_accounts immediately like, retweet, and reply to it.
         """
         print(f"\n========================================================")
         print(f"[*] BIST TWEET VE KARSILIKLI ETKİLEŞİM AKISI")
         print(f"[*] Tweet Atacak Hesap: @{poster_account}")
         print(f"[*] Destekleyecek Hesaplar: {', '.join('@' + a for a in helper_accounts)}")
+        if media_path:
+            print(f"[*] Eklenecek Fotoğraf: {media_path}")
         print(f"========================================================\n")
 
         # Step 1: Generate Content
@@ -141,7 +144,7 @@ class EngagementPodManager:
             page = context.new_page()
             actions = TwitterActions(page)
 
-            post_res = actions.post_tweet(tweet_text)
+            post_res = actions.post_tweet(tweet_text, media_path=media_path)
             if not post_res.get("success"):
                 print(f"[!] Tweet paylaşılamadı: {post_res.get('error')}")
                 return {"success": False, "error": post_res.get("error")}

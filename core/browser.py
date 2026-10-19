@@ -65,11 +65,17 @@ class TwitterBrowserManager:
             "--lang=tr-TR,tr,en-US,en"
         ]
 
+        # Check for proxy (env or config)
+        proxy_url = os.getenv("PROXY_URL") or os.getenv("HTTP_PROXY") or os.getenv("HTTPS_PROXY")
+        launch_kwargs = {
+            "headless": headless,
+            "args": launch_args
+        }
+        if proxy_url:
+            launch_kwargs["proxy"] = {"server": proxy_url}
+
         # Launch chromium
-        self.browser = self.playwright.chromium.launch(
-            headless=headless,
-            args=launch_args
-        )
+        self.browser = self.playwright.chromium.launch(**launch_kwargs)
 
         context_options = {
             "user_agent": DEFAULT_USER_AGENT,

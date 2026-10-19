@@ -304,6 +304,23 @@
                         </label>
                     </div>
 
+                    <div class="flex items-center justify-between p-3 bg-slate-800/60 border border-slate-700/80 rounded-xl">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="compose-attach-chart" class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-emerald-500">
+                            <label for="compose-attach-chart" class="text-xs text-slate-300 cursor-pointer font-medium">
+                                📸 <b>Teknik Analiz Grafiğini Fotoğraf Olarak Tweet'e Ekle</b>
+                            </label>
+                        </div>
+                        <select id="compose-chart-symbol" class="bg-slate-900 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-white">
+                            <option value="THYAO">THYAO Grafiği</option>
+                            <option value="ASELS">ASELS Grafiği</option>
+                            <option value="EREGL">EREGL Grafiği</option>
+                            <option value="TUPRS">TUPRS Grafiği</option>
+                            <option value="AKBNK">AKBNK Grafiği</option>
+                            <option value="XU100">BIST 100 Grafiği</option>
+                        </select>
+                    </div>
+
                     <div class="flex gap-3">
                         <button onclick="generateAndFillTweet()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold px-4 py-3 rounded-xl transition flex items-center gap-2">
                             <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> AI İle Doldur
@@ -721,11 +738,20 @@
                 return;
             }
 
+            const attachChart = document.getElementById('compose-attach-chart').checked;
+            const chartSymbol = document.getElementById('compose-chart-symbol').value;
+
             showToast("Tweet arka planda paylaşılıyor ve kasılıyor...");
             const res = await fetch('/api/tweet/post', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({account: acc, text, auto_boost: autoBoost})
+                body: JSON.stringify({
+                    account: acc, 
+                    text: text, 
+                    auto_boost: autoBoost,
+                    attach_chart: attachChart,
+                    chart_symbol: chartSymbol
+                })
             });
             const data = await res.json();
             if (data.success) {
