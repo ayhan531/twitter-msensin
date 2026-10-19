@@ -1,0 +1,37 @@
+{
+  "accounts": [
+    {
+      "username": "hesap_1",
+      "role": "analyst",
+      "auth_token": "",
+      "ct0": ""
+    },
+    {
+      "username": "hesap_2",
+      "role": "helper",
+      "auth_token": "",
+      "ct0": ""
+    },
+    {
+      "username": "hesap_3",
+      "role": "helper",
+      "auth_token": "",
+      "ct0": ""
+    }
+  ],
+  "ai_settings": {
+    "provider": "auto",
+    "gemini_api_key": "",
+    "groq_api_key": ""
+  },
+  "safety_settings": {
+    "min_delay_seconds": 15,
+    "max_delay_seconds": 45,
+    "headless": true
+  },
+  "engagement_settings": {
+    "auto_like": true,
+    "auto_retweet": true,
+    "auto_comment": true
+  }
+}

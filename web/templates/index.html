@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>𝕏 BIST 100 AI Bot & Otomasyon Paneli</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#10b981',
+                            600: '#059669',
+                            dark: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-[#0b1120] text-slate-100 min-h-screen font-sans flex flex-col antialiased">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-slate-800 bg-[#0f172a]/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <span class="text-white font-black text-xl">𝕏</span>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-white leading-tight flex items-center gap-2">
+                        BIST 100 AI Otomasyon
+                        <span class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">Render Cloud</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Ücretsiz Yapay Zeka & Çapraz Hesap Kasma Havuzu</p>
+                </div>
+            </div>
+
+            <!-- Header Quick Stats -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex items-center space-x-2 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-slate-300">Aktif Hesaplar:</span>
+                    <span id="stat-active-accounts" class="font-bold text-emerald-400">0</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="toggleTab('settings')" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
+                    <button onclick="loadAllData()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Yenile">
+                        <i class="fa-solid fa-arrows-rotate" id="refresh-icon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Navigation Tabs -->
+    <div class="border-b border-slate-800 bg-[#0f172a]/50">
+        <div class="max-w-7xl mx-auto px-4 flex space-x-1 sm:space-x-4 overflow-x-auto py-2">
+            <button onclick="toggleTab('market')" id="tab-btn-market" class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30">
+                <i class="fa-solid fa-chart-line"></i> Canlı Piyasa
+            </button>
+            <button onclick="toggleTab('news')" id="tab-btn-news" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-newspaper"></i> Anlık Haberler & AI
+            </button>
+            <button onclick="toggleTab('charts')" id="tab-btn-charts" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-chart-area"></i> Grafik & Teknik
+            </button>
+            <button onclick="toggleTab('boost')" id="tab-btn-boost" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-rocket"></i> Etkileşim Kasma (Boost)
+            </button>
+            <button onclick="toggleTab('compose')" id="tab-btn-compose" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i> Tweet At
+            </button>
+            <button onclick="toggleTab('accounts')" id="tab-btn-accounts" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-users"></i> Hesaplar (<span id="tab-acc-count">0</span>)
+            </button>
+            <button onclick="toggleTab('autopilot')" id="tab-btn-autopilot" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-robot"></i> Otomatik Pilot
+            </button>
+            <button onclick="toggleTab('logs')" id="tab-btn-logs" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-terminal"></i> Loglar
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+
+        <!-- Notification Toast -->
+        <div id="toast" class="fixed bottom-5 right-5 z-50 transform transition-all duration-300 translate-y-20 opacity-0 bg-slate-800 border border-slate-700 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+            <span id="toast-message" class="text-sm font-medium">İşlem başarılı</span>
+        </div>
+
+        <!-- ================= TAB 1: CANLI PİYASA ================= -->
+        <section id="tab-market" class="tab-content space-y-6">
+            <!-- BIST 100 Index Card -->
+            <div class="bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700/80 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Borsa İstanbul Ana Göstergesi</span>
+                            <span id="market-sentiment" class="text-xs px-2.5 py-1 rounded-full font-bold bg-slate-700 text-slate-300">Yükleniyor...</span>
+                        </div>
+                        <div class="flex items-baseline gap-4 mt-2">
+                            <h2 class="text-4xl font-extrabold text-white" id="index-price">--.-- TL</h2>
+                            <span id="index-change" class="text-lg font-bold px-2 py-0.5 rounded-lg bg-slate-800">--%</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-2">
+                            Gün İçi Aralık: <span id="index-range" class="font-medium text-slate-300">-- - --</span> | Kaynak: Yahoo Finance Real-time
+                        </p>
+                    </div>
+
+                    <!-- Quick Action Button -->
+                    <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <button onclick="generateAndOpenTweetModal('market')" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold px-5 py-3 rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> AI BIST Tweeti Üret
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Popular Stocks Grid -->
+            <div>
+                <h3 class="text-sm font-semibold uppercase text-slate-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-trend-up text-emerald-400"></i> Popüler BIST Hisseleri
+                </h3>
+                <div id="stocks-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <!-- Populated dynamically -->
+                    <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl animate-pulse">
+                        <div class="h-4 bg-slate-800 rounded w-16 mb-2"></div>
+                        <div class="h-6 bg-slate-800 rounded w-24"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: ANLIK HABERLER ================= -->
+        <section id="tab-news" class="tab-content hidden space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                <div>
+                    <h3 class="font-bold text-white text-base">Canlı Borsa & Ekonomi Haber Akışı</h3>
+                    <p class="text-xs text-slate-400">Google News RSS, KAP ve finans bültenlerinden 0 maliyetle anlık çekilir.</p>
+                </div>
+                <button onclick="fetchNews()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg text-slate-300 transition flex items-center gap-2 self-start sm:self-auto">
+                    <i class="fa-solid fa-arrows-rotate"></i> Haberleri Güncelle
+                </button>
+            </div>
+
+            <div id="news-list" class="space-y-3">
+                <!-- Dynamically loaded news -->
+            </div>
+        </section>
+
+        <!-- ================= TAB 3: GRAFİK & TEKNİK ANALİZ ================= -->
+        <section id="tab-charts" class="tab-content hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <label class="text-sm font-medium text-slate-300">Hisse Seç:</label>
+                    <select id="chart-symbol-select" onchange="loadChartAnalysis()" class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                        <option value="THYAO">THYAO - Türk Hava Yolları</option>
+                        <option value="ASELS">ASELS - Aselsan</option>
+                        <option value="EREGL">EREGL - Ereğli Demir Çelik</option>
+                        <option value="TUPRS">TUPRS - Tüpraş</option>
+                        <option value="AKBNK">AKBNK - Akbank</option>
+                        <option value="BIMAS">BIMAS - BİM Mağazalar</option>
+                        <option value="XU100">XU100 - BIST 100 Endeksi</option>
+                        <option value="SASA">SASA - Sasa Polyester</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 w-full md:w-auto">
+                    <button onclick="generateChartTweet()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Grafiği Yorumla & Tweetle
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chart & Indicators Display -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Technical Indicators Box -->
+                <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl space-y-4">
+                    <h4 class="font-bold text-white text-base flex items-center gap-2">
+                        <i class="fa-solid fa-microchip text-emerald-400"></i> Teknik Göstergeler
+                    </h4>
+                    
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800">
+                            <span class="text-slate-400">Son Fiyat</span>
+                            <span id="ind-price" class="font-bold text-white">-- TL</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800">
+                            <span class="text-slate-400">RSI (14 Periyot)</span>
+                            <span id="ind-rsi" class="font-bold px-2 py-0.5 rounded text-xs bg-slate-800">--</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800">
+                            <span class="text-slate-400">EMA 9 / EMA 21</span>
+                            <span id="ind-emas" class="font-medium text-slate-300">-- / --</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-800">
+                            <span class="text-slate-400">Destek / Direnç</span>
+                            <span id="ind-sr" class="font-medium text-slate-300">-- / --</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2">
+                            <span class="text-slate-400">Genel Trend</span>
+                            <span id="ind-trend" class="font-bold text-emerald-400">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dark Mode Chart Image -->
+                <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex items-center justify-center">
+                    <div id="chart-loading" class="text-slate-400 text-sm py-20 flex flex-col items-center gap-2">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl text-emerald-400"></i>
+                        Grafik hesaplanıyor ve çiziliyor...
+                    </div>
+                    <img id="chart-img" src="" alt="Teknik Grafik" class="hidden rounded-xl w-full max-h-[380px] object-contain shadow-lg" />
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 4: ETKİLEŞİM HAVUZU (BOOST) ================= -->
+        <section id="tab-boost" class="tab-content hidden space-y-6">
+            <div class="bg-gradient-to-br from-slate-900 to-indigo-950/40 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                <div class="max-w-2xl space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-600/30 text-indigo-400 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-rocket"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-white">Çapraz Hesap Kasma Havuzu (Boost Pod)</h3>
+                            <p class="text-xs text-slate-400">Verilen tweet URL'sini sisteme bağlı tüm hesaplarınız otomatik olarak <b>beğenir, retweet yapar ve yapay zeka ile profesyonel yorum atar</b>.</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 pt-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Kasılacak Tweet Linki (X / Twitter URL):</label>
+                            <input type="text" id="boost-tweet-url" placeholder="https://x.com/kullanici/status/1234567890123" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 placeholder-slate-500" />
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tweeti Atan Kendi Hesabınız (Bu hesaptan beğeni/yorum yapılmaz):</label>
+                            <input type="text" id="boost-exclude-account" placeholder="@kullanici_adiniz (isteğe bağlı)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 placeholder-slate-500" />
+                        </div>
+
+                        <div class="bg-indigo-950/30 border border-indigo-500/20 rounded-xl p-3 text-xs text-indigo-300 space-y-1">
+                            <p>🛡️ <b>Anti-Bot Güvenliği:</b> Hesaplar arası 15-45 saniye rastgele gecikme uygulanır.</p>
+                            <p>🤖 <b>Yapay Zeka Yorumu:</b> Her hesap konuya uygun özgün finans teyit yorumu yazar.</p>
+                        </div>
+
+                        <button onclick="startBoostTweet()" id="btn-start-boost" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-bolt"></i> Tüm Hesaplarla Kasma İşlemini Başlat
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 5: TWEET AT ================= -->
+        <section id="tab-compose" class="tab-content hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl max-w-2xl">
+                <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-nib text-emerald-400"></i> Yeni Tweet Paylaş & Kas
+                </h3>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Gönderici Hesap:</label>
+                        <select id="compose-account-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-semibold text-slate-300">Tweet İçeriği:</label>
+                            <span id="compose-char-count" class="text-xs text-slate-400">0 / 280</span>
+                        </div>
+                        <textarea id="compose-text" rows="5" placeholder="BIST analizi veya piyasa yorumunuzu buraya yazın..." oninput="updateCharCount()" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-emerald-500 placeholder-slate-500"></textarea>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="compose-auto-boost" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-emerald-500">
+                        <label for="compose-auto-boost" class="text-xs text-slate-300 cursor-pointer">
+                            Paylaştıktan hemen sonra havuzdaki diğer hesaplar bu tweeti <b>otomatik beğensin, RT yapsın ve yorum atsın</b>.
+                        </label>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button onclick="generateAndFillTweet()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold px-4 py-3 rounded-xl transition flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i> AI İle Doldur
+                        </button>
+                        <button onclick="sendTweet()" id="btn-send-tweet" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Tweeti Gönder
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 6: HESAP YÖNETİMİ ================= -->
+        <section id="tab-accounts" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Add Account Form -->
+                <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl h-fit">
+                    <h3 class="font-bold text-lg text-white mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus text-emerald-400"></i> Yeni Hesap Bağla
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">
+                        X Developer API'ye gerek yoktur. Tarayıcınızdan (F12 -> Cookies -> `x.com`) aldığınız `auth_token` çerezini yapıştırmanız yeterlidir.
+                    </p>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">X Kullanıcı Adı (@ olmadan):</label>
+                            <input type="text" id="acc-username" placeholder="ornek_hesap" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">auth_token Çerezi:</label>
+                            <input type="password" id="acc-auth-token" placeholder="68a9f4c..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">ct0 Çerezi (İsteğe Bağlı):</label>
+                            <input type="password" id="acc-ct0" placeholder="İsteğe bağlı..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Hesap Rolü:</label>
+                            <select id="acc-role" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                                <option value="analyst">Analist (Ana Tweetleri Atan)</option>
+                                <option value="helper" selected>Destekçi (Beğeni, RT, Yorum Yapan)</option>
+                            </select>
+                        </div>
+
+                        <button onclick="addNewAccount()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-link"></i> Hesabı Bağla ve Çerezleri Kaydet
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Connected Accounts List -->
+                <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                    <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-id-card-clip text-emerald-400"></i> Bağlı X (Twitter) Hesapları
+                    </h3>
+
+                    <div id="accounts-table" class="space-y-3">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 7: OTOMATİK PİLOT ================= -->
+        <section id="tab-autopilot" class="tab-content hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl max-w-2xl space-y-6">
+                <div>
+                    <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                        <i class="fa-solid fa-robot text-emerald-400"></i> Otomatik Pilot (Background Worker)
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-1">
+                        Açık bırakıldığında siz bilgisayarı kapatsanız dahi (Render Cloud üzerinde) belirlenen aralıklarla canlı BIST analizi paylaşır ve hesapların birbirini kasmasını sağlar.
+                    </p>
+                </div>
+
+                <div class="bg-slate-800/60 border border-slate-700/80 p-5 rounded-xl space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="font-bold text-sm text-white block">Otomatik Pilot Durumu</span>
+                            <span id="autopilot-status-badge" class="text-xs text-slate-400">Yükleniyor...</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="autopilot-toggle-switch" onchange="toggleAutopilotServer()" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Paylaşım ve Kasma Sıklığı:</label>
+                        <select id="autopilot-interval-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+                            <option value="30">Her 30 Dakikada Bir</option>
+                            <option value="60" selected>Her 60 Dakikada (1 Saat) Bir</option>
+                            <option value="120">Her 2 Saatte Bir</option>
+                            <option value="240">Her 4 Saatte Bir</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 8: SİSTEM LOGLARI ================= -->
+        <section id="tab-logs" class="tab-content hidden space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-terminal text-emerald-400"></i> Sistem ve Bot Aktivite Kayıtları
+                </h3>
+                <button onclick="fetchLogs()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-slate-300">
+                    <i class="fa-solid fa-arrows-rotate"></i> Yenile
+                </button>
+            </div>
+            <div id="logs-container" class="bg-black/90 font-mono text-xs p-4 rounded-2xl border border-slate-800 h-96 overflow-y-auto space-y-1 text-slate-300">
+                <!-- Log entries -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-[#0f172a]/60 py-4 text-center text-xs text-slate-500">
+        𝕏 BIST 100 AI Automation Engine • 100% Ücretsiz & Open Architecture • SPK Mevzuatına Uygundur (YTD)
+    </footer>
+
+    <!-- Frontend Script -->
+    <script>
+        let currentStatus = {};
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById("toast");
+            const icon = document.getElementById("toast-icon");
+            const msg = document.getElementById("toast-message");
+
+            msg.textContent = message;
+            if (isError) {
+                icon.className = "fa-solid fa-triangle-exclamation text-rose-400";
+            } else {
+                icon.className = "fa-solid fa-circle-check text-emerald-400";
+            }
+            toast.classList.remove("translate-y-20", "opacity-0");
+            setTimeout(() => {
+                toast.classList.add("translate-y-20", "opacity-0");
+            }, 3500);
+        }
+
+        function toggleTab(tabName) {
+            document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
+            document.querySelectorAll(".tab-btn").forEach(el => {
+                el.classList.remove("bg-emerald-600/20", "text-emerald-400", "border", "border-emerald-500/30");
+                el.classList.add("text-slate-400");
+            });
+
+            const activeContent = document.getElementById(`tab-${tabName}`);
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            if (activeContent) activeContent.classList.remove("hidden");
+            if (activeBtn) {
+                activeBtn.classList.remove("text-slate-400");
+                activeBtn.classList.add("bg-emerald-600/20", "text-emerald-400", "border", "border-emerald-500/30");
+            }
+
+            if (tabName === 'news') fetchNews();
+            if (tabName === 'charts') loadChartAnalysis();
+            if (tabName === 'logs') fetchLogs();
+        }
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status');
+                currentStatus = await res.json();
+                
+                document.getElementById('stat-active-accounts').textContent = `${currentStatus.active_sessions} / ${currentStatus.total_accounts}`;
+                document.getElementById('tab-acc-count').textContent = currentStatus.total_accounts;
+
+                // Render accounts in table & select
+                const table = document.getElementById('accounts-table');
+                const composeSelect = document.getElementById('compose-account-select');
+                table.innerHTML = '';
+                composeSelect.innerHTML = '';
+
+                if (currentStatus.accounts.length === 0) {
+                    table.innerHTML = '<p class="text-sm text-slate-500 py-4">Henüz bağlı hesap yok. Soldaki formdan ekleyin.</p>';
+                    composeSelect.innerHTML = '<option value="">Önce bir hesap ekleyin</option>';
+                } else {
+                    currentStatus.accounts.forEach(acc => {
+                        const statusBadge = acc.connected 
+                            ? '<span class="text-xs bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full font-medium">Aktif Oturum</span>'
+                            : '<span class="text-xs bg-rose-500/20 text-rose-400 px-2.5 py-1 rounded-full font-medium">Giriş Yok</span>';
+                        
+                        table.innerHTML += `
+                            <div class="flex items-center justify-between p-3.5 bg-slate-800/70 border border-slate-700/80 rounded-xl">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white text-sm">
+                                        @
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-white text-sm">@${acc.username}</h4>
+                                        <span class="text-xs text-slate-400">Rol: ${acc.role}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    ${statusBadge}
+                                    <button onclick="deleteAccount('${acc.username}')" class="text-slate-400 hover:text-rose-400 p-2 text-sm transition">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+
+                        composeSelect.innerHTML += `<option value="${acc.username}">@${acc.username} (${acc.role})</option>`;
+                    });
+                }
+
+                // Autopilot status
+                const ap = currentStatus.autopilot || {};
+                const apSwitch = document.getElementById('autopilot-toggle-switch');
+                const apBadge = document.getElementById('autopilot-status-badge');
+                if (apSwitch) apSwitch.checked = ap.enabled;
+                if (apBadge) {
+                    apBadge.textContent = ap.enabled ? `Aktif (${ap.interval_minutes} dk)` : 'Devre Dışı';
+                    apBadge.className = ap.enabled ? 'text-xs text-emerald-400 font-bold' : 'text-xs text-slate-400';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function fetchMarket() {
+            try {
+                const res = await fetch('/api/market');
+                const data = await res.json();
+                
+                const idx = data.index || {};
+                document.getElementById('index-price').textContent = `${idx.price || '--'} TL`;
+                
+                const chgEl = document.getElementById('index-change');
+                const chg = idx.change_pct || 0;
+                chgEl.textContent = `${chg >= 0 ? '+' : ''}${chg}%`;
+                chgEl.className = chg >= 0 
+                    ? 'text-lg font-bold px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400' 
+                    : 'text-lg font-bold px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-400';
+
+                document.getElementById('market-sentiment').textContent = data.sentiment || 'Yatay';
+                document.getElementById('index-range').textContent = `${idx.day_low || '--'} - ${idx.day_high || '--'} TL`;
+
+                // Render grid
+                const grid = document.getElementById('stocks-grid');
+                grid.innerHTML = '';
+                (data.stocks || []).forEach(s => {
+                    const isPos = (s.change_pct || 0) >= 0;
+                    grid.innerHTML += `
+                        <div class="bg-slate-900 border border-slate-800 p-3.5 rounded-xl hover:border-slate-700 transition">
+                            <span class="text-xs font-bold text-slate-400 block">${s.symbol}</span>
+                            <span class="text-base font-extrabold text-white block mt-1">${s.price} TL</span>
+                            <span class="text-xs font-bold ${isPos ? 'text-emerald-400' : 'text-rose-400'}">
+                                ${isPos ? '+' : ''}${s.change_pct}%
+                            </span>
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function fetchNews() {
+            const list = document.getElementById('news-list');
+            list.innerHTML = '<p class="text-xs text-slate-400 py-6 text-center"><i class="fa-solid fa-spinner fa-spin"></i> Haberler çekiliyor...</p>';
+            try {
+                const res = await fetch('/api/news');
+                const news = await res.json();
+                list.innerHTML = '';
+                news.forEach(n => {
+                    list.innerHTML += `
+                        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl hover:border-slate-700 transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-emerald-400">${n.source}</span>
+                                    <span class="text-xs text-slate-500">${n.pub_date || ''}</span>
+                                </div>
+                                <h4 class="font-medium text-white text-sm">${n.title}</h4>
+                            </div>
+                            <button onclick="commentAndTweetNews('${encodeURIComponent(n.title)}', '${encodeURIComponent(n.source)}')" class="shrink-0 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white text-xs font-semibold px-3 py-2 rounded-lg border border-emerald-500/30 transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Yorumla & Tweetle
+                            </button>
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                list.innerHTML = '<p class="text-xs text-rose-400 py-4">Haberler alınamadı.</p>';
+            }
+        }
+
+        async function loadChartAnalysis() {
+            const sym = document.getElementById('chart-symbol-select').value;
+            const img = document.getElementById('chart-img');
+            const loading = document.getElementById('chart-loading');
+            img.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`/api/chart/${sym}`);
+                const data = await res.json();
+
+                document.getElementById('ind-price').textContent = `${data.current_price || '--'} TL`;
+                document.getElementById('ind-rsi').textContent = data.rsi || '--';
+                document.getElementById('ind-emas').textContent = `${data.ema9 || '--'} / ${data.ema21 || '--'} TL`;
+                document.getElementById('ind-sr').textContent = `${data.support || '--'} / ${data.resistance || '--'} TL`;
+                document.getElementById('ind-trend').textContent = data.trend || 'Nötr';
+
+                if (data.chart_url) {
+                    img.src = `${data.chart_url}?t=${Date.now()}`;
+                    img.onload = () => {
+                        loading.classList.add('hidden');
+                        img.classList.remove('hidden');
+                    };
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function generateChartTweet() {
+            const sym = document.getElementById('chart-symbol-select').value;
+            showToast(`${sym} grafiği yapay zeka ile analiz ediliyor...`);
+            try {
+                const res = await fetch('/api/chart/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({symbol: sym})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('compose-text').value = data.tweet;
+                    updateCharCount();
+                    toggleTab('compose');
+                    showToast("Grafik yorumu tweet alanına aktarıldı!");
+                }
+            } catch (e) {
+                showToast("Yorum üretilemedi", true);
+            }
+        }
+
+        async function commentAndTweetNews(encodedTitle, encodedSource) {
+            const title = decodeURIComponent(encodedTitle);
+            const source = decodeURIComponent(encodedSource);
+            showToast("Haber yapay zekaya yorumlatılıyor...");
+            try {
+                const res = await fetch('/api/news/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({title, source})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('compose-text').value = data.tweet;
+                    updateCharCount();
+                    toggleTab('compose');
+                    showToast("Haber yorumu tweet alanına aktarıldı!");
+                }
+            } catch (e) {
+                showToast("Yorum üretilemedi", true);
+            }
+        }
+
+        async function addNewAccount() {
+            const uname = document.getElementById('acc-username').value.trim();
+            const token = document.getElementById('acc-auth-token').value.trim();
+            const ct0 = document.getElementById('acc-ct0').value.trim();
+            const role = document.getElementById('acc-role').value;
+
+            if (!uname || !token) {
+                showToast("Kullanıcı adı ve auth_token zorunludur", true);
+                return;
+            }
+
+            showToast("Hesap bağlanıyor...");
+            const res = await fetch('/api/accounts/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: uname, auth_token: token, ct0, role})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message);
+                document.getElementById('acc-username').value = '';
+                document.getElementById('acc-auth-token').value = '';
+                document.getElementById('acc-ct0').value = '';
+                fetchStatus();
+            } else {
+                showToast(data.error || "Hata oluştu", true);
+            }
+        }
+
+        async function deleteAccount(username) {
+            if (!confirm(`@${username} hesabını silmek istediğinize emin misiniz?`)) return;
+            await fetch('/api/accounts/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username})
+            });
+            showToast(`@${username} silindi`);
+            fetchStatus();
+        }
+
+        async function sendTweet() {
+            const acc = document.getElementById('compose-account-select').value;
+            const text = document.getElementById('compose-text').value.trim();
+            const autoBoost = document.getElementById('compose-auto-boost').checked;
+
+            if (!acc) {
+                showToast("Lütfen bir gönderici hesap seçin", true);
+                return;
+            }
+            if (!text) {
+                showToast("Tweet metni boş olamaz", true);
+                return;
+            }
+
+            showToast("Tweet arka planda paylaşılıyor ve kasılıyor...");
+            const res = await fetch('/api/tweet/post', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({account: acc, text, auto_boost: autoBoost})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message);
+                document.getElementById('compose-text').value = '';
+                updateCharCount();
+            } else {
+                showToast(data.error || "Hata oluştu", true);
+            }
+        }
+
+        async function startBoostTweet() {
+            const url = document.getElementById('boost-tweet-url').value.trim();
+            const exclude = document.getElementById('boost-exclude-account').value.trim();
+
+            if (!url) {
+                showToast("Lütfen tweet URL'sini girin", true);
+                return;
+            }
+
+            showToast("Etkileşim havuzu başlatıldı! Hesaplar sırayla beğeni/RT/yorum atıyor...");
+            const res = await fetch('/api/pod/boost', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({tweet_url: url, exclude_account: exclude})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message);
+                document.getElementById('boost-tweet-url').value = '';
+            } else {
+                showToast(data.error || "Hata oluştu", true);
+            }
+        }
+
+        async function toggleAutopilotServer() {
+            const enabled = document.getElementById('autopilot-toggle-switch').checked;
+            const interval = parseInt(document.getElementById('autopilot-interval-select').value, 10);
+            
+            const res = await fetch('/api/autopilot/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled, interval_minutes: interval})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(enabled ? "Otomatik Pilot Başlatıldı" : "Otomatik Pilot Durduruldu");
+                fetchStatus();
+            }
+        }
+
+        async function fetchLogs() {
+            const container = document.getElementById('logs-container');
+            try {
+                const res = await fetch('/api/logs');
+                const data = await res.json();
+                container.innerHTML = '';
+                data.logs.forEach(l => {
+                    const color = l.level === 'error' ? 'text-rose-400' : (l.level === 'success' ? 'text-emerald-400' : (l.level === 'warning' ? 'text-amber-400' : 'text-slate-300'));
+                    container.innerHTML += `<div class="${color}">[${l.time}] [${l.level.toUpperCase()}] ${l.message}</div>`;
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function generateAndFillTweet() {
+            showToast("BIST verileriyle AI tweet üretiliyor...");
+            try {
+                const res = await fetch('/api/market');
+                const mData = await res.json();
+                const sym = (mData.stocks && mData.stocks.length) ? mData.stocks[0].symbol : 'THYAO';
+                const cRes = await fetch('/api/chart/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({symbol: sym})
+                });
+                const cData = await cRes.json();
+                if (cData.tweet) {
+                    document.getElementById('compose-text').value = cData.tweet;
+                    updateCharCount();
+                    showToast("Tweet içeriği oluşturuldu!");
+                }
+            } catch (e) {
+                showToast("Üretim başarısız", true);
+            }
+        }
+
+        function updateCharCount() {
+            const len = document.getElementById('compose-text').value.length;
+            const counter = document.getElementById('compose-char-count');
+            counter.textContent = `${len} / 280`;
+            counter.className = len > 280 ? 'text-xs text-rose-400 font-bold' : 'text-xs text-slate-400';
+        }
+
+        function loadAllData() {
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('fa-spin');
+            Promise.all([fetchStatus(), fetchMarket()]).finally(() => {
+                setTimeout(() => icon.classList.remove('fa-spin'), 600);
+            });
+        }
+
+        // Initial Load
+        loadAllData();
+        setInterval(fetchStatus, 15000); // 15 sec periodic status sync
+    </script>
+</body>
+</html>

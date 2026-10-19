@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+sessions/session_*.json
+web/static/charts/*.png
+.pytest_cache/
+.DS_Store

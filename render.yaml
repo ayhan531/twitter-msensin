@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: x-bist-bot-dashboard
+    runtime: docker
+    plan: free
+    region: frankfurt
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
