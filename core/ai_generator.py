@@ -8,7 +8,7 @@ import random
 import json
 import warnings
 import requests
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 warnings.filterwarnings("ignore")
 
@@ -165,20 +165,30 @@ Görev: Bu verilere dayanarak X (Twitter) için çarpıcı, teknik terimler içe
         )
         return text
 
-    def generate_reply(self, parent_tweet_text: str) -> str:
+    def generate_reply(self, parent_tweet_text: str, custom_pool: Optional[List[str]] = None, custom_system_prompt: Optional[str] = None) -> str:
         """
         Generates an authentic BIST reply to engage on a tweet.
+        Can use custom user comment pool, custom AI persona, or standard fallback.
         """
+        # If user defined a custom comment pool and wants to use it
+        if custom_pool and len(custom_pool) > 0 and random.random() < 0.6:
+            return random.choice(custom_pool)
+
         prompt = f"Şu tweete cevap yaz:\n\"{parent_tweet_text}\""
+        system_prompt = custom_system_prompt or BIST_REPLY_PROMPT
         
         ai_response = None
         if self.provider == "gemini":
-            ai_response = self._call_gemini_api(prompt, BIST_REPLY_PROMPT)
+            ai_response = self._call_gemini_api(prompt, system_prompt)
         elif self.provider == "groq":
-            ai_response = self._call_groq_api(prompt, BIST_REPLY_PROMPT)
+            ai_response = self._call_groq_api(prompt, system_prompt)
 
         if ai_response:
             return ai_response
+
+        # Fallback to custom pool if provided, else standard fallback
+        if custom_pool and len(custom_pool) > 0:
+            return random.choice(custom_pool)
 
         return random.choice(FALLBACK_REPLIES)
 

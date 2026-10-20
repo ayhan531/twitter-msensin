@@ -1,22 +1,10 @@
 {
   "accounts": [
     {
-      "username": "hesap_1",
+      "username": "Borsagenci",
       "role": "analyst",
-      "auth_token": "",
-      "ct0": ""
-    },
-    {
-      "username": "hesap_2",
-      "role": "helper",
-      "auth_token": "",
-      "ct0": ""
-    },
-    {
-      "username": "hesap_3",
-      "role": "helper",
-      "auth_token": "",
-      "ct0": ""
+      "auth_token": "70bcacd3a39523f1f1fdbff3411eaa63ce996e50",
+      "ct0": "53ae1c20158dc02db9fe4db6a02a32e62d0bdf2890c4ef440b7bd58041244f3e953399efbda013a2808e0ebe1c0bd377610d0179ce0f371775fbb19c395f628422f55c8323c40acfc13b6148cc2da459"
     }
   ],
   "ai_settings": {

@@ -29,6 +29,7 @@ from core.news_service import BISTNewsService
 from core.chart_service import BISTChartService
 from core.engagement_pod import EngagementPodManager
 from core.twitter_actions import TwitterActions
+from core.watchlist_monitor import WatchlistMonitor
 
 CONFIG_FILE = ROOT_DIR / "config" / "config.json"
 STATIC_DIR = ROOT_DIR / "web" / "static"
@@ -45,6 +46,14 @@ browser_mgr = TwitterBrowserManager()
 market_data = BISTMarketData()
 news_service = BISTNewsService()
 chart_service = BISTChartService()
+watchlist_monitor = None
+
+def get_watchlist_monitor() -> WatchlistMonitor:
+    global watchlist_monitor
+    if not watchlist_monitor:
+        ai_gen = get_ai_generator()
+        watchlist_monitor = WatchlistMonitor(browser_mgr, ai_gen)
+    return watchlist_monitor
 
 # Global Activity Logs (in-memory circular buffer)
 activity_logs = []
@@ -89,12 +98,33 @@ def autopilot_worker():
             cfg = get_config()
             interval = cfg.get("autopilot", {}).get("interval_minutes", 60) * 60
             accounts = cfg.get("accounts", [])
+            watchlist = cfg.get("watchlist", [])
             
+            # 1. Sabit İzleme Listesindeki (Watchlist) Hesapları Kontrol Et ve Kas
+            if watchlist and accounts:
+                helpers = [a.get("username") for a in accounts if browser_mgr.has_session(a.get("username"))]
+                if helpers:
+                    monitor = get_watchlist_monitor()
+                    for target in watchlist:
+                        target_user = target.get("username") if isinstance(target, dict) else str(target)
+                        log_event(f"Sabit hedef taranıyor: @{target_user}...", "info")
+                        res = monitor.check_and_engage_target(
+                            target_username=target_user,
+                            helper_accounts=helpers,
+                            do_like=True,
+                            do_retweet=True,
+                            do_comment=True,
+                            headless=True
+                        )
+                        if res and res.get("status") == "boosted":
+                            log_event(f"@{target_user} için yeni tweet kasıldı: {res.get('url')}", "success")
+
+            # 2. Ana Analist Hesabı ile Canlı BIST Tweeti Paylaş ve Kas
             if accounts and any(browser_mgr.has_session(a.get("username", "")) for a in accounts):
                 analyst = next((a.get("username") for a in accounts if a.get("role") == "analyst"), accounts[0].get("username"))
                 helpers = [a.get("username") for a in accounts if a.get("username") != analyst and browser_mgr.has_session(a.get("username"))]
 
-                log_event(f"Otomatik Pilot döngüsü tetiklendi: @{analyst} analiz paylaşacak...", "info")
+                log_event(f"Otomatik Pilot döngüsü: @{analyst} analiz paylaşacak...", "info")
                 ai_gen = get_ai_generator()
                 pod_mgr = EngagementPodManager(browser_mgr, ai_gen)
                 pod_mgr.post_and_cross_boost(analyst, helpers, headless=True)
@@ -192,6 +222,151 @@ async def delete_account(payload: DeleteAccountPayload):
             pass
     log_event(f"@{uname} hesabı silindi.", "info")
     return {"success": True}
+
+class BulkImportPayload(BaseModel):
+    raw_data: str  # Format: username:auth_token[:ct0] or username,auth_token[,ct0] per line
+    role: str = "helper"
+
+@app.post("/api/accounts/bulk_import")
+async def bulk_import_accounts(payload: BulkImportPayload):
+    lines = payload.raw_data.strip().splitlines()
+    if not lines:
+        return JSONResponse({"success": False, "error": "İçe aktarılacak veri bulunamadı"}, status_code=400)
+
+    cfg = get_config()
+    accs = cfg.get("accounts", [])
+    imported_count = 0
+
+    for line in lines:
+        clean_line = line.strip()
+        if not clean_line or clean_line.startswith("#"):
+            continue
+
+        # Split by colon, comma, or tab
+        parts = []
+        if ":" in clean_line:
+            parts = clean_line.split(":")
+        elif "," in clean_line:
+            parts = clean_line.split(",")
+        elif "\t" in clean_line:
+            parts = clean_line.split("\t")
+        else:
+            continue
+
+        if len(parts) >= 2:
+            uname = parts[0].strip().lstrip("@")
+            auth_token = parts[1].strip()
+            ct0 = parts[2].strip() if len(parts) >= 3 else ""
+
+            if uname and auth_token:
+                # Save session file
+                browser_mgr.create_session_from_cookies(uname, auth_token, ct0)
+                
+                # Update accounts registry
+                existing = next((a for a in accs if a.get("username") == uname), None)
+                if existing:
+                    existing["auth_token"] = auth_token
+                    existing["ct0"] = ct0
+                else:
+                    accs.append({
+                        "username": uname,
+                        "role": payload.role,
+                        "auth_token": auth_token,
+                        "ct0": ct0
+                    })
+                imported_count += 1
+
+    cfg["accounts"] = accs
+    save_config(cfg)
+    log_event(f"Toplu içe aktarma tamamlandı: {imported_count} yeni hesap sisteme bağlandı!", "success")
+    return {"success": True, "imported_count": imported_count, "total_accounts": len(accs)}
+
+# Watchlist Endpoints
+@app.get("/api/watchlist")
+async def get_watchlist():
+    cfg = get_config()
+    return {"watchlist": cfg.get("watchlist", [])}
+
+class WatchlistAddPayload(BaseModel):
+    username: str
+
+@app.post("/api/watchlist/add")
+async def add_watchlist(payload: WatchlistAddPayload):
+    uname = payload.username.strip().lstrip("@")
+    if not uname:
+        return JSONResponse({"success": False, "error": "Kullanıcı adı boş olamaz"}, status_code=400)
+    cfg = get_config()
+    watchlist = cfg.get("watchlist", [])
+    if uname not in watchlist:
+        watchlist.append(uname)
+        cfg["watchlist"] = watchlist
+        save_config(cfg)
+        log_event(f"@{uname} sabit izleme listesine (Watchlist) eklendi.", "success")
+    return {"success": True, "watchlist": watchlist}
+
+@app.post("/api/watchlist/delete")
+async def delete_watchlist(payload: WatchlistAddPayload):
+    uname = payload.username.strip().lstrip("@")
+    cfg = get_config()
+    watchlist = [w for w in cfg.get("watchlist", []) if w != uname]
+    cfg["watchlist"] = watchlist
+    save_config(cfg)
+    log_event(f"@{uname} izleme listesinden çıkarıldı.", "info")
+    return {"success": True, "watchlist": watchlist}
+
+@app.post("/api/watchlist/check_now")
+async def check_watchlist_now(background_tasks: BackgroundTasks):
+    cfg = get_config()
+    watchlist = cfg.get("watchlist", [])
+    accounts = cfg.get("accounts", [])
+    helpers = [a.get("username") for a in accounts if browser_mgr.has_session(a.get("username"))]
+
+    if not watchlist:
+        return JSONResponse({"success": False, "error": "İzleme listesinde hesap yok."}, status_code=400)
+    if not helpers:
+        return JSONResponse({"success": False, "error": "Kasma işlemi yapacak aktif oturumlu hesap yok."}, status_code=400)
+
+    def run_check():
+        monitor = get_watchlist_monitor()
+        for target in watchlist:
+            log_event(f"Anlık hedef kontrolü: @{target}...", "info")
+            monitor.check_and_engage_target(target, helpers, headless=True)
+
+    background_tasks.add_task(run_check)
+    return {"success": True, "message": f"{len(watchlist)} hedef hesap için anlık kontrol başlatıldı"}
+
+# Comment Studio Settings Endpoints
+@app.get("/api/settings/comments")
+async def get_comment_settings():
+    cfg = get_config()
+    return cfg.get("comment_settings", {
+        "mode": "hybrid",
+        "custom_prompt": "",
+        "custom_pool": [
+            "Güzel analiz, hacim tarafı da bu hareketi teyit ediyor. Emeğinize sağlık.",
+            "Destek seviyesi oldukça sağlam çalışmış görünüyor. Takipteyiz.",
+            "BIST100 genel yönü belirlese de hisse bazlı ayrışmalar devam edecektir.",
+            "Katılıyorum, özellikle kurumsal alımlar bu seviyeyi destekliyor.",
+            "Kısa vadeli düzeltmeler ana trendi bozmadığı sürece fırsat sunabilir."
+        ]
+    })
+
+class CommentSettingsPayload(BaseModel):
+    mode: str = "hybrid"  # 'ai', 'custom_pool', 'hybrid'
+    custom_prompt: Optional[str] = None
+    custom_pool: List[str] = []
+
+@app.post("/api/settings/comments")
+async def save_comment_settings(payload: CommentSettingsPayload):
+    cfg = get_config()
+    cfg["comment_settings"] = {
+        "mode": payload.mode,
+        "custom_prompt": payload.custom_prompt or "",
+        "custom_pool": [c.strip() for c in payload.custom_pool if c.strip()]
+    }
+    save_config(cfg)
+    log_event("Yorum Stüdyosu ayarları kaydedildi.", "success")
+    return {"success": True, "comment_settings": cfg["comment_settings"]}
 
 @app.get("/api/market")
 async def get_market():
@@ -314,7 +489,19 @@ async def boost_tweet_endpoint(payload: BoostTweetPayload, background_tasks: Bac
     def run_boost():
         ai_gen = get_ai_generator()
         pod_mgr = EngagementPodManager(browser_mgr, ai_gen)
-        pod_mgr.boost_tweet(url, helpers, do_like=True, do_retweet=True, do_comment=True, headless=True)
+        cmt_cfg = cfg.get("comment_settings", {})
+        custom_pool = cmt_cfg.get("custom_pool")
+        custom_prompt = cmt_cfg.get("custom_prompt")
+        pod_mgr.boost_tweet(
+            url, 
+            helpers, 
+            do_like=True, 
+            do_retweet=True, 
+            do_comment=True, 
+            custom_comments=custom_pool,
+            custom_prompt=custom_prompt,
+            headless=True
+        )
         log_event(f"{url} için etkileşim havuzu görevi başarıyla tamamlandı!", "success")
 
     background_tasks.add_task(run_boost)

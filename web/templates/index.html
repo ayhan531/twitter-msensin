@@ -86,6 +86,12 @@
             <button onclick="toggleTab('boost')" id="tab-btn-boost" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
                 <i class="fa-solid fa-rocket"></i> Etkileşim Kasma (Boost)
             </button>
+            <button onclick="toggleTab('watchlist')" id="tab-btn-watchlist" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-bullseye text-rose-400"></i> Sabit Hedefler
+            </button>
+            <button onclick="toggleTab('comments')" id="tab-btn-comments" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-comments text-amber-400"></i> Yorum Stüdyosu
+            </button>
             <button onclick="toggleTab('compose')" id="tab-btn-compose" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
                 <i class="fa-solid fa-paper-plane"></i> Tweet At
             </button>
@@ -274,6 +280,98 @@
             </div>
         </section>
 
+        <!-- ================= TAB 4.1: SABİT HEDEFLER (WATCHLIST) ================= -->
+        <section id="tab-watchlist" class="tab-content hidden space-y-6">
+            <div class="bg-gradient-to-br from-slate-900 to-rose-950/30 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                <div class="max-w-3xl space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-rose-600/30 text-rose-400 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-bullseye"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-white">Sabit Hedef İzleme Listesi (Watchlist)</h3>
+                            <p class="text-xs text-slate-400">Buraya sabitlediğiniz hesaplar (örn: @Borsagenci) yeni bir tweet paylaştığı an, havuzdaki tüm hesaplarınız otomatik olarak <b>beğeni, retweet ve yapay zeka teyit yorumu</b> atar.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                        <input type="text" id="watchlist-new-user" placeholder="İzlenecek kullanıcı adı (örn: Borsagenci)" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-rose-500 placeholder-slate-500" />
+                        <button onclick="addToWatchlist()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-6 py-3 rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Listeye Sabitle
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2">
+                        <span class="text-xs font-semibold text-slate-400">Sabitlenmiş Hedef Hesaplar:</span>
+                        <button onclick="checkWatchlistNow()" class="text-xs bg-slate-800 hover:bg-slate-700 text-rose-400 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i> Şimdi Kontrol Et ve Kas
+                        </button>
+                    </div>
+
+                    <div id="watchlist-container" class="space-y-2">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 4.2: YORUM STÜDYOSU ================= -->
+        <section id="tab-comments" class="tab-content hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl max-w-3xl space-y-6">
+                <div>
+                    <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                        <i class="fa-solid fa-comments text-amber-400"></i> Yorum Stüdyosu & Özelleştirme
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-1">
+                        Kasacak hesapların tweetlerin altına atacağı yorumların tarzını, hazır cümle havuzunu ve yapay zeka tonunu buradan belirleyin.
+                    </p>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-2">Yorum Üretim Modu:</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <label class="flex items-center gap-2 p-3 bg-slate-800/80 border border-slate-700 rounded-xl cursor-pointer hover:border-amber-500 transition">
+                                <input type="radio" name="comment-mode" value="hybrid" checked class="text-amber-500 focus:ring-amber-500">
+                                <div>
+                                    <span class="text-xs font-bold text-white block">⚡ Hibrit Mod</span>
+                                    <span class="text-[10px] text-slate-400">AI + Hazır Liste Karması</span>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 bg-slate-800/80 border border-slate-700 rounded-xl cursor-pointer hover:border-amber-500 transition">
+                                <input type="radio" name="comment-mode" value="ai" class="text-amber-500 focus:ring-amber-500">
+                                <div>
+                                    <span class="text-xs font-bold text-white block">🤖 Sadece Yapay Zeka</span>
+                                    <span class="text-[10px] text-slate-400">Hisseye Özel Orijinal Yorum</span>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 bg-slate-800/80 border border-slate-700 rounded-xl cursor-pointer hover:border-amber-500 transition">
+                                <input type="radio" name="comment-mode" value="custom_pool" class="text-amber-500 focus:ring-amber-500">
+                                <div>
+                                    <span class="text-xs font-bold text-white block">📝 Sadece Hazır Havuz</span>
+                                    <span class="text-[10px] text-slate-400">Yazdığınız Cümleleri Seçer</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Hazır Yorum Cümleleri Havuzu (Her satıra bir yorum):</label>
+                        <textarea id="comment-pool-textarea" rows="6" placeholder="Güzel tespit hocam...&#10;Destek seviyesi gayet sağlam...&#10;Hacim tarafı da bu hareketi teyit ediyor..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Yapay Zeka Yorum Talimatı (Prompt Özelleştirme):</label>
+                        <input type="text" id="comment-custom-prompt" placeholder="Örn: Samimi ol, kısa ve vurucu teyit cümleleri kur, tebrik et" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500" />
+                    </div>
+
+                    <button onclick="saveCommentSettings()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Yorum Ayarlarını Kaydet
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- ================= TAB 5: TWEET AT ================= -->
         <section id="tab-compose" class="tab-content hidden space-y-6">
             <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl max-w-2xl">
@@ -338,21 +436,28 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Add Account Form -->
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl h-fit">
-                    <h3 class="font-bold text-lg text-white mb-2 flex items-center gap-2">
-                        <i class="fa-solid fa-user-plus text-emerald-400"></i> Yeni Hesap Bağla
-                    </h3>
-                    <p class="text-xs text-slate-400 mb-4">
-                        X Developer API'ye gerek yoktur. Tarayıcınızdan (F12 -> Cookies -> `x.com`) aldığınız `auth_token` çerezini yapıştırmanız yeterlidir.
-                    </p>
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                            <i class="fa-solid fa-user-plus text-emerald-400"></i> Hesap Ekle
+                        </h3>
+                        <div class="flex bg-slate-800 p-1 rounded-lg text-xs">
+                            <button onclick="toggleImportMode('single')" id="btn-mode-single" class="px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition">Tekli</button>
+                            <button onclick="toggleImportMode('bulk')" id="btn-mode-bulk" class="px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition">🚀 100'lü Toplu</button>
+                        </div>
+                    </div>
 
-                    <div class="space-y-3">
+                    <!-- Single Account Form -->
+                    <div id="form-single-account" class="space-y-3">
+                        <p class="text-xs text-slate-400 mb-2">
+                            F12 -> Cookies -> `x.com` -> `auth_token` çerezini yapıştırın.
+                        </p>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 mb-1">X Kullanıcı Adı (@ olmadan):</label>
                             <input type="text" id="acc-username" placeholder="ornek_hesap" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 mb-1">auth_token Çerezi:</label>
-                            <input type="password" id="acc-auth-token" placeholder="68a9f4c..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                            <input type="password" id="acc-auth-token" placeholder="70bcacd3..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 mb-1">ct0 Çerezi (İsteğe Bağlı):</label>
@@ -367,18 +472,37 @@
                         </div>
 
                         <button onclick="addNewAccount()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-link"></i> Hesabı Bağla ve Çerezleri Kaydet
+                            <i class="fa-solid fa-link"></i> Hesabı Bağla ve Kaydet
+                        </button>
+                    </div>
+
+                    <!-- Bulk Import Form -->
+                    <div id="form-bulk-account" class="hidden space-y-3">
+                        <p class="text-xs text-slate-400">
+                            100 hesaba kadar toplu içe aktarın. Her satıra şu formatta yazın:<br>
+                            <code class="text-emerald-400 bg-slate-800 px-1 py-0.5 rounded">kullanici:auth_token:ct0</code>
+                        </p>
+                        <textarea id="acc-bulk-text" rows="8" placeholder="hesap1:70bcacd3a...:53ae1c...&#10;hesap2:88f1ba9c0...:11d0ab...&#10;hesap3:92ce18da3..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"></textarea>
+                        
+                        <button onclick="bulkImportAccounts()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Toplu Hesapları Sisteme Aktar
                         </button>
                     </div>
                 </div>
 
                 <!-- Connected Accounts List -->
-                <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                    <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-id-card-clip text-emerald-400"></i> Bağlı X (Twitter) Hesapları
-                    </h3>
+                <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                            <i class="fa-solid fa-id-card-clip text-emerald-400"></i> Bağlı X Hesapları (<span id="accounts-counter">0</span>)
+                        </h3>
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-slate-400"></i>
+                            <input type="text" id="acc-search-input" oninput="filterAccountsList()" placeholder="Hesaplarda ara..." class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+                        </div>
+                    </div>
 
-                    <div id="accounts-table" class="space-y-3">
+                    <div id="accounts-table" class="space-y-2 max-h-[500px] overflow-y-auto pr-1">
                         <!-- Loaded dynamically -->
                     </div>
                 </div>
@@ -482,6 +606,8 @@
 
             if (tabName === 'news') fetchNews();
             if (tabName === 'charts') loadChartAnalysis();
+            if (tabName === 'watchlist') fetchWatchlist();
+            if (tabName === 'comments') fetchCommentSettings();
             if (tabName === 'logs') fetchLogs();
         }
 
@@ -492,6 +618,8 @@
                 
                 document.getElementById('stat-active-accounts').textContent = `${currentStatus.active_sessions} / ${currentStatus.total_accounts}`;
                 document.getElementById('tab-acc-count').textContent = currentStatus.total_accounts;
+                const counterEl = document.getElementById('accounts-counter');
+                if (counterEl) counterEl.textContent = currentStatus.total_accounts;
 
                 // Render accounts in table & select
                 const table = document.getElementById('accounts-table');
@@ -509,7 +637,7 @@
                             : '<span class="text-xs bg-rose-500/20 text-rose-400 px-2.5 py-1 rounded-full font-medium">Giriş Yok</span>';
                         
                         table.innerHTML += `
-                            <div class="flex items-center justify-between p-3.5 bg-slate-800/70 border border-slate-700/80 rounded-xl">
+                            <div data-username="${acc.username}" class="flex items-center justify-between p-3.5 bg-slate-800/70 border border-slate-700/80 rounded-xl">
                                 <div class="flex items-center gap-3">
                                     <div class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white text-sm">
                                         @
@@ -845,6 +973,177 @@
             const counter = document.getElementById('compose-char-count');
             counter.textContent = `${len} / 280`;
             counter.className = len > 280 ? 'text-xs text-rose-400 font-bold' : 'text-xs text-slate-400';
+        }
+
+        function toggleImportMode(mode) {
+            const singleForm = document.getElementById('form-single-account');
+            const bulkForm = document.getElementById('form-bulk-account');
+            const btnSingle = document.getElementById('btn-mode-single');
+            const btnBulk = document.getElementById('btn-mode-bulk');
+
+            if (mode === 'bulk') {
+                singleForm.classList.add('hidden');
+                bulkForm.classList.remove('hidden');
+                btnBulk.className = 'px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition';
+                btnSingle.className = 'px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition';
+            } else {
+                bulkForm.classList.add('hidden');
+                singleForm.classList.remove('hidden');
+                btnSingle.className = 'px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition';
+                btnBulk.className = 'px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition';
+            }
+        }
+
+        async function bulkImportAccounts() {
+            const text = document.getElementById('acc-bulk-text').value.trim();
+            if (!text) {
+                showToast("Lütfen içe aktarılacak hesap verilerini girin", true);
+                return;
+            }
+            showToast("100'e kadar hesap toplu içe aktarılıyor...");
+            try {
+                const res = await fetch('/api/accounts/bulk_import', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({raw_data: text, role: 'helper'})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`${data.imported_count} yeni hesap başarıyla bağlandı!`);
+                    document.getElementById('acc-bulk-text').value = '';
+                    fetchStatus();
+                } else {
+                    showToast(data.error || "Hata oluştu", true);
+                }
+            } catch (e) {
+                showToast("Toplu içe aktarma başarısız", true);
+            }
+        }
+
+        function filterAccountsList() {
+            const query = document.getElementById('acc-search-input').value.toLowerCase().trim();
+            const items = document.querySelectorAll('#accounts-table > div');
+            items.forEach(el => {
+                const uname = el.getAttribute('data-username') || '';
+                if (uname.toLowerCase().includes(query)) {
+                    el.style.display = 'flex';
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+        }
+
+        async function fetchWatchlist() {
+            const container = document.getElementById('watchlist-container');
+            container.innerHTML = '<p class="text-xs text-slate-400 py-2">Hedefler yükleniyor...</p>';
+            try {
+                const res = await fetch('/api/watchlist');
+                const data = await res.json();
+                container.innerHTML = '';
+                const list = data.watchlist || [];
+                if (list.length === 0) {
+                    container.innerHTML = '<p class="text-xs text-slate-500 py-3">Henüz sabitlenmiş hedef yok. Yukarıdan ekleyin (örn: Borsagenci).</p>';
+                    return;
+                }
+                list.forEach(target => {
+                    const uname = typeof target === 'object' ? target.username : target;
+                    container.innerHTML += `
+                        <div class="flex items-center justify-between p-3 bg-slate-800/80 border border-slate-700/80 rounded-xl">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-xs">
+                                    <i class="fa-solid fa-bullseye"></i>
+                                </div>
+                                <span class="font-bold text-sm text-white">@${uname}</span>
+                            </div>
+                            <button onclick="deleteFromWatchlist('${uname}')" class="text-slate-400 hover:text-rose-400 p-2 text-xs transition">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function addToWatchlist() {
+            const user = document.getElementById('watchlist-new-user').value.trim();
+            if (!user) {
+                showToast("Lütfen kullanıcı adı girin", true);
+                return;
+            }
+            showToast(`@${user} izleme listesine ekleniyor...`);
+            const res = await fetch('/api/watchlist/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: user})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(`@${user} başarıyla sabitlendi!`);
+                document.getElementById('watchlist-new-user').value = '';
+                fetchWatchlist();
+            }
+        }
+
+        async function deleteFromWatchlist(uname) {
+            if (!confirm(`@${uname} hedefini listeden çıkarmak istiyor musunuz?`)) return;
+            await fetch('/api/watchlist/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: uname})
+            });
+            showToast(`@${uname} listeden çıkarıldı`);
+            fetchWatchlist();
+        }
+
+        async function checkWatchlistNow() {
+            showToast("Sabit hedefler taranıyor, yeni tweet varsa kasılacak...");
+            const res = await fetch('/api/watchlist/check_now', {method: 'POST'});
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message);
+            } else {
+                showToast(data.error || "Hata", true);
+            }
+        }
+
+        async function fetchCommentSettings() {
+            try {
+                const res = await fetch('/api/settings/comments');
+                const data = await res.json();
+                
+                // Set radio mode
+                const radios = document.getElementsByName('comment-mode');
+                radios.forEach(r => {
+                    if (r.value === data.mode) r.checked = true;
+                });
+
+                document.getElementById('comment-pool-textarea').value = (data.custom_pool || []).join('\n');
+                document.getElementById('comment-custom-prompt').value = data.custom_prompt || '';
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function saveCommentSettings() {
+            let mode = 'hybrid';
+            document.getElementsByName('comment-mode').forEach(r => {
+                if (r.checked) mode = r.value;
+            });
+            const poolLines = document.getElementById('comment-pool-textarea').value.split('\n');
+            const prompt = document.getElementById('comment-custom-prompt').value.trim();
+
+            showToast("Yorum Stüdyosu ayarları kaydediliyor...");
+            const res = await fetch('/api/settings/comments', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mode: mode, custom_pool: poolLines, custom_prompt: prompt})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast("Yorum ayarları başarıyla güncellendi!");
+            }
         }
 
         function loadAllData() {

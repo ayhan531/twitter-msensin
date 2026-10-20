@@ -25,11 +25,14 @@ class EngagementPodManager:
         do_like: bool = True,
         do_retweet: bool = True,
         do_comment: bool = True,
+        custom_comments: Optional[List[str]] = None,
+        custom_prompt: Optional[str] = None,
         headless: bool = True,
         parent_tweet_text: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Takes a target tweet URL and uses helper accounts to Like, RT, and Comment on it.
+        Optimized for 100+ accounts with sequential memory cleanup and human jitter.
         """
         results = []
         print(f"\n========================================================")
@@ -42,13 +45,13 @@ class EngagementPodManager:
             print(f"\n>>> [{idx + 1}/{len(helper_accounts)}] Hesap Devreye Giriyor: @{acc}")
             
             if not self.browser_mgr.has_session(acc):
-                print(f"[!] HATA: @{acc} için oturum çerezi bulunamadı. Lütfen önce giriş yapın.")
+                print(f"[!] HATA: @{acc} için oturum çerezi bulunamadı. Atlanıyor.")
                 results.append({"account": acc, "status": "no_session"})
                 continue
 
-            # Random jitter before logging in
+            # Random jitter before logging in (scaled for multi-account safety)
             if idx > 0:
-                wait_time = random.uniform(10, 25)
+                wait_time = random.uniform(8, 22)
                 print(f"[⏳] Hesaplar arası doğal bekleme süresi: {round(wait_time, 1)} saniye...")
                 time.sleep(wait_time)
 
@@ -69,17 +72,21 @@ class EngagementPodManager:
                 if do_like:
                     like_res = actions.like_tweet(tweet_url)
                     acc_result["liked"] = like_res.get("success", False)
-                    human_delay(2, 5)
+                    human_delay(2, 4)
 
                 # 2. Retweet
                 if do_retweet:
                     rt_res = actions.retweet(tweet_url)
                     acc_result["retweeted"] = rt_res.get("success", False)
-                    human_delay(3, 6)
+                    human_delay(2, 5)
 
-                # 3. Yorum (AI Comment)
+                # 3. Yorum (AI Comment or Custom Pool)
                 if do_comment:
-                    comment_text = self.ai_gen.generate_reply(parent_tweet_text or "Borsa analizi")
+                    comment_text = self.ai_gen.generate_reply(
+                        parent_tweet_text or "Borsa analizi",
+                        custom_pool=custom_comments,
+                        custom_system_prompt=custom_prompt
+                    )
                     reply_res = actions.reply_tweet(tweet_url, comment_text)
                     acc_result["commented"] = reply_res.get("success", False)
                     acc_result["comment_text"] = comment_text
