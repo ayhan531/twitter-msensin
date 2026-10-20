@@ -7,6 +7,7 @@ import os
 import sys
 import json
 import time
+import asyncio
 import threading
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -15,6 +16,7 @@ from fastapi import FastAPI, Request, BackgroundTasks, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Ensure root directory is in sys.path
@@ -38,6 +40,16 @@ STATIC_DIR.mkdir(parents=True, exist_ok=True)
 (STATIC_DIR / "charts").mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="𝕏 BIST 100 AI Automation & Engagement Pod")
+
+# Enable CORS so Bookmarklet / Chrome Extensions can push sessions directly to localhost
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
@@ -205,6 +217,138 @@ async def add_account(payload: AddAccountPayload):
     log_event(f"@{uname} hesabı oturum çerezleriyle sisteme eklendi.", "success")
     return {"success": True, "message": f"@{uname} başarıyla bağlandı"}
 
+class QuickConnectPayload(BaseModel):
+    username: Optional[str] = ""
+    auth_token: str
+    ct0: Optional[str] = ""
+    role: str = "helper"
+
+@app.post("/api/accounts/quick_connect")
+async def quick_connect(payload: QuickConnectPayload):
+    """
+    Called by 1-Click Browser Bookmarklet or external extension.
+    Instantly registers session without opening devtools or typing keys.
+    """
+    token = payload.auth_token.strip()
+    if not token:
+        return JSONResponse({"success": False, "error": "auth_token bulunamadı"}, status_code=400)
+
+    uname = payload.username.strip().lstrip("@") if payload.username else ""
+    if not uname:
+        uname = f"x_user_{int(time.time()) % 100000}"
+
+    browser_mgr.create_session_from_cookies(uname, token, payload.ct0)
+
+    cfg = get_config()
+    accs = cfg.get("accounts", [])
+    existing = next((a for a in accs if a.get("username") == uname), None)
+    if existing:
+        existing["role"] = payload.role
+        existing["auth_token"] = token
+        existing["ct0"] = payload.ct0 or ""
+    else:
+        accs.append({
+            "username": uname,
+            "role": payload.role,
+            "auth_token": token,
+            "ct0": payload.ct0 or ""
+        })
+    cfg["accounts"] = accs
+    save_config(cfg)
+    log_event(f"⚡ 1-Tıkla Bağlantı: @{uname} hesabı anında sisteme kaydedildi!", "success")
+    return {"success": True, "message": f"@{uname} hesabı tek tıkla başarıyla bağlandı!", "username": uname}
+
+class InteractiveLoginPayload(BaseModel):
+    username: Optional[str] = ""
+
+@app.post("/api/accounts/interactive_login")
+async def interactive_login_endpoint(payload: InteractiveLoginPayload):
+    """
+    Launches a visible browser window for the user to log in manually.
+    Automatically detects success, extracts cookies and saves the session.
+    """
+    uname = payload.username.strip().lstrip("@") if payload.username else ""
+    log_event(f"🖥️ Canlı giriş tarayıcısı açılıyor ({uname or 'Otomatik Algılama'})...", "info")
+
+    result = await asyncio.to_thread(browser_mgr.interactive_login, uname)
+
+    if result.get("success"):
+        detected_user = result.get("username")
+        auth_token = result.get("auth_token", "")
+        ct0 = result.get("ct0", "")
+
+        cfg = get_config()
+        accs = cfg.get("accounts", [])
+        existing = next((a for a in accs if a.get("username") == detected_user), None)
+        if existing:
+            existing["auth_token"] = auth_token
+            existing["ct0"] = ct0
+        else:
+            accs.append({
+                "username": detected_user,
+                "role": "helper",
+                "auth_token": auth_token,
+                "ct0": ct0
+            })
+        cfg["accounts"] = accs
+        save_config(cfg)
+        log_event(f"✅ @{detected_user} canlı tarayıcıdan başarıyla bağlandı ve kaydedildi!", "success")
+        return {"success": True, "username": detected_user, "message": f"@{detected_user} başarıyla bağlandı!"}
+    else:
+        log_event(f"❌ Canlı giriş başarısız: {result.get('error')}", "error")
+        return JSONResponse({"success": False, "error": result.get("error", "Giriş başarısız")}, status_code=400)
+
+class AutoLoginPayload(BaseModel):
+    username_or_email: str
+    password: str
+    verify_credential: Optional[str] = None
+    role: str = "helper"
+
+@app.post("/api/accounts/auto_login")
+async def auto_login_endpoint(payload: AutoLoginPayload):
+    """
+    Automated credential login (Username/Email + Password + verification challenge).
+    """
+    user_cred = payload.username_or_email.strip()
+    if not user_cred or not payload.password:
+        return JSONResponse({"success": False, "error": "Kullanıcı adı ve şifre zorunludur"}, status_code=400)
+
+    log_event(f"🤖 @{user_cred} için otomatik giriş başlatılıyor...", "info")
+    result = await asyncio.to_thread(
+        browser_mgr.automated_login,
+        user_cred,
+        payload.password,
+        payload.verify_credential,
+        False  # Show browser window so user can watch if needed
+    )
+
+    if result.get("success"):
+        uname = result.get("username")
+        auth_token = result.get("auth_token", "")
+        ct0 = result.get("ct0", "")
+
+        cfg = get_config()
+        accs = cfg.get("accounts", [])
+        existing = next((a for a in accs if a.get("username") == uname), None)
+        if existing:
+            existing["role"] = payload.role
+            existing["auth_token"] = auth_token
+            existing["ct0"] = ct0
+        else:
+            accs.append({
+                "username": uname,
+                "role": payload.role,
+                "auth_token": auth_token,
+                "ct0": ct0
+            })
+        cfg["accounts"] = accs
+        save_config(cfg)
+        log_event(f"✅ @{uname} otomatik şifreli giriş ile bağlandı!", "success")
+        return {"success": True, "username": uname, "message": f"@{uname} başarıyla bağlandı!"}
+    else:
+        log_event(f"❌ Otomatik giriş başarısız: {result.get('error')}", "error")
+        return JSONResponse({"success": False, "error": result.get("error")}, status_code=400)
+
 class DeleteAccountPayload(BaseModel):
     username: str
 
@@ -224,25 +368,53 @@ async def delete_account(payload: DeleteAccountPayload):
     return {"success": True}
 
 class BulkImportPayload(BaseModel):
-    raw_data: str  # Format: username:auth_token[:ct0] or username,auth_token[,ct0] per line
+    raw_data: str  # Format: JSON array (Cookie-Editor), or username:auth_token, or username:password:email
     role: str = "helper"
 
 @app.post("/api/accounts/bulk_import")
 async def bulk_import_accounts(payload: BulkImportPayload):
-    lines = payload.raw_data.strip().splitlines()
-    if not lines:
+    raw = payload.raw_data.strip()
+    if not raw:
         return JSONResponse({"success": False, "error": "İçe aktarılacak veri bulunamadı"}, status_code=400)
 
     cfg = get_config()
     accs = cfg.get("accounts", [])
     imported_count = 0
 
+    # 1. Check if input is a JSON array exported from Cookie-Editor / EditThisCookie
+    if raw.startswith("[") and raw.endswith("]"):
+        try:
+            cookie_list = json.loads(raw)
+            if isinstance(cookie_list, list):
+                auth_token = next((c.get("value") for c in cookie_list if c.get("name") == "auth_token"), None)
+                ct0 = next((c.get("value") for c in cookie_list if c.get("name") == "ct0"), "")
+                twid = next((c.get("value") for c in cookie_list if c.get("name") == "twid"), "")
+                
+                if auth_token:
+                    # Generate or deduce username
+                    uname = f"cookie_acc_{int(time.time()) % 100000}"
+                    browser_mgr.create_session_from_cookies(uname, auth_token, ct0)
+                    accs.append({
+                        "username": uname,
+                        "role": payload.role,
+                        "auth_token": auth_token,
+                        "ct0": ct0
+                    })
+                    imported_count = 1
+                    cfg["accounts"] = accs
+                    save_config(cfg)
+                    log_event(f"🍪 Cookie-Editor JSON formatından @{uname} başarıyla aktarıldı!", "success")
+                    return {"success": True, "imported_count": 1, "total_accounts": len(accs)}
+        except Exception as e:
+            pass
+
+    # 2. Line by line parsing (username:auth_token[:ct0] or plain auth_token)
+    lines = raw.splitlines()
     for line in lines:
         clean_line = line.strip()
         if not clean_line or clean_line.startswith("#"):
             continue
 
-        # Split by colon, comma, or tab
         parts = []
         if ":" in clean_line:
             parts = clean_line.split(":")
@@ -250,19 +422,21 @@ async def bulk_import_accounts(payload: BulkImportPayload):
             parts = clean_line.split(",")
         elif "\t" in clean_line:
             parts = clean_line.split("\t")
-        else:
-            continue
+        elif len(clean_line) >= 30 and " " not in clean_line:
+            # Single plain auth_token pasted directly
+            parts = [f"acc_{int(time.time()) % 10000}_{imported_count}", clean_line]
 
         if len(parts) >= 2:
             uname = parts[0].strip().lstrip("@")
-            auth_token = parts[1].strip()
-            ct0 = parts[2].strip() if len(parts) >= 3 else ""
+            token_or_pass = parts[1].strip()
+            ct0_or_email = parts[2].strip() if len(parts) >= 3 else ""
 
-            if uname and auth_token:
-                # Save session file
+            # If token_or_pass looks like a 40-char hex auth_token
+            if len(token_or_pass) >= 25:
+                auth_token = token_or_pass
+                ct0 = ct0_or_email
                 browser_mgr.create_session_from_cookies(uname, auth_token, ct0)
                 
-                # Update accounts registry
                 existing = next((a for a in accs if a.get("username") == uname), None)
                 if existing:
                     existing["auth_token"] = auth_token

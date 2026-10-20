@@ -451,55 +451,88 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Add Account Form -->
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl h-fit">
-                    <div class="flex items-center justify-between mb-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                         <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                            <i class="fa-solid fa-user-plus text-emerald-400"></i> Hesap Ekle
+                            <i class="fa-solid fa-user-plus text-emerald-400"></i> Hesap Bağla
                         </h3>
-                        <div class="flex bg-slate-800 p-1 rounded-lg text-xs">
-                            <button onclick="toggleImportMode('single')" id="btn-mode-single" class="px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition">Tekli</button>
-                            <button onclick="toggleImportMode('bulk')" id="btn-mode-bulk" class="px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition">🚀 100'lü Toplu</button>
-                        </div>
                     </div>
 
-                    <!-- Single Account Form -->
-                    <div id="form-single-account" class="space-y-3">
-                        <p class="text-xs text-slate-400 mb-2">
-                            F12 -> Cookies -> `x.com` -> `auth_token` çerezini yapıştırın.
-                        </p>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">X Kullanıcı Adı (@ olmadan):</label>
-                            <input type="text" id="acc-username" placeholder="ornek_hesap" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">auth_token Çerezi:</label>
-                            <input type="password" id="acc-auth-token" placeholder="70bcacd3..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">ct0 Çerezi (İsteğe Bağlı):</label>
-                            <input type="password" id="acc-ct0" placeholder="İsteğe bağlı..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Hesap Rolü:</label>
-                            <select id="acc-role" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
-                                <option value="analyst">Analist (Ana Tweetleri Atan)</option>
-                                <option value="helper" selected>Destekçi (Beğeni, RT, Yorum Yapan)</option>
-                            </select>
-                        </div>
+                    <!-- Mode Selector Pills -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-slate-800/90 p-1.5 rounded-xl text-xs mb-4">
+                        <button onclick="toggleImportMode('live')" id="btn-mode-live" class="px-2 py-1.5 rounded-lg font-bold bg-emerald-600 text-white transition text-center">🖥️ Canlı Aç</button>
+                        <button onclick="toggleImportMode('bookmark')" id="btn-mode-bookmark" class="px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center">⚡ 1-Tık Yer İmi</button>
+                        <button onclick="toggleImportMode('auto')" id="btn-mode-auto" class="px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center">🔑 Şifreyle</button>
+                        <button onclick="toggleImportMode('bulk')" id="btn-mode-bulk" class="px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center">🍪 Toplu / Çerez</button>
+                    </div>
 
-                        <button onclick="addNewAccount()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-link"></i> Hesabı Bağla ve Kaydet
+                    <!-- MODE 1: Canlı Tarayıcı ile Giriş (En Kolayı) -->
+                    <div id="form-live-account" class="space-y-3">
+                        <div class="bg-emerald-950/40 border border-emerald-500/20 rounded-xl p-3 text-xs text-emerald-300 space-y-1">
+                            <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i> Sıfır Çerez Uğraşı & En Kolay Yöntem</p>
+                            <p class="text-slate-300 text-[11px]">Butona basınca ekranda gerçek bir tarayıcı açılır. Normal şekilde hesabınıza (Google, Mail veya Şifreyle) girin. Sistem başarıyı otomatik algılayıp oturumu anında kaydeder!</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Hesap Kullanıcı Adı (İsteğe Bağlı):</label>
+                            <input type="text" id="acc-live-username" placeholder="Boş bırakırsanız otomatik algılanır" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 placeholder-slate-500" />
+                        </div>
+                        <button onclick="startInteractiveLogin()" id="btn-start-interactive" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-desktop"></i> 🖥️ Tarayıcıyı Aç & Giriş Yap
                         </button>
                     </div>
 
-                    <!-- Bulk Import Form -->
+                    <!-- MODE 2: 1-Tık Yer İmi (Bookmarklet - Ultra Hızlı) -->
+                    <div id="form-bookmark-account" class="hidden space-y-3">
+                        <div class="bg-purple-950/40 border border-purple-500/20 rounded-xl p-3 text-xs text-purple-300 space-y-2">
+                            <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-bolt"></i> Tek Tıkla X Oturumu Aktarma</p>
+                            <p class="text-slate-300 text-[11px]">Aşağıdaki mor butonu tarayıcınızın <b>Yer İmleri Çubuğuna (Bookmarks)</b> sürükleyin. x.com açıkken yer imine tek tıkladığınızda o hesap bota anında eklenir!</p>
+                        </div>
+
+                        <div class="p-3 bg-slate-800/80 border border-dashed border-purple-500/50 rounded-xl text-center">
+                            <a id="bookmarklet-link" href='javascript:(function(){try{var c=document.cookie.split("; ");var g=function(n){var p=n+"=";var x=c.find(function(i){return i.indexOf(p)===0;});return x?x.substring(p.length):"";};var a=g("auth_token");var t=g("ct0");if(!a){alert("auth_token bulunamadı! Lütfen x.com üzerinde çalıştırın.");return;}var l=document.querySelector("a[data-testid=\"AppTabBar_Profile_Link\"]");var u=l?l.getAttribute("href").replace("/",""):prompt("Kullanıcı adınız (@ olmadan):","");if(!u)u="user_"+Date.now().toString().slice(-4);fetch("http://localhost:5000/api/accounts/quick_connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,auth_token:a,ct0:t,role:"helper"})}).then(function(r){return r.json();}).then(function(d){alert("🎉 @"+u+" hesabı bota bağlandı!");}).catch(function(e){alert("Bot paneline bağlanılamadı! http://localhost:5000 açık mı?");});}catch(e){alert("Hata: "+e);}})();' class="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2.5 rounded-lg text-xs shadow-md cursor-grab active:cursor-grabbing">
+                                <i class="fa-solid fa-bookmark"></i> 📌 X Oturumunu Bota Bağla (Sürükle)
+                            </a>
+                        </div>
+
+                        <div class="pt-2">
+                            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Veya X.com'da F12 Konsola Yapıştırın:</label>
+                            <button onclick="copyBookmarkletCode()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2 rounded-xl text-xs flex items-center justify-center gap-2">
+                                <i class="fa-regular fa-copy"></i> 📋 1 Tıkla Konsol Kodunu Kopyala
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- MODE 3: Şifre ile Otomatik Giriş -->
+                    <div id="form-auto-account" class="hidden space-y-3">
+                        <div class="bg-blue-950/40 border border-blue-500/20 rounded-xl p-3 text-xs text-blue-300">
+                            <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-key"></i> Otomatik Şifreli Giriş</p>
+                            <p class="text-slate-300 text-[11px] mt-1">Kullanıcı adı ve şifrenizi girin; bot arka planda tarayıcıyı açıp giriş yapar ve oturumunuzu otomatik kaydeder.</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Kullanıcı Adı veya E-posta:</label>
+                            <input type="text" id="acc-auto-user" placeholder="kullanici_adi veya email@gmail.com" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">X Şifresi:</label>
+                            <input type="password" id="acc-auto-pass" placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Doğrulama Bilgisi (İsteğe Bağlı):</label>
+                            <input type="text" id="acc-auto-verify" placeholder="Twitter telefon veya kullanıcı adı sorarsa" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 placeholder-slate-500" />
+                        </div>
+                        <button onclick="startAutoLogin()" id="btn-start-autologin" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-arrow-right-to-bracket"></i> 🤖 Otomatik Giriş Yap & Bağla
+                        </button>
+                    </div>
+
+                    <!-- MODE 4: Çerez & 100'lü Toplu İçe Aktarma -->
                     <div id="form-bulk-account" class="hidden space-y-3">
-                        <p class="text-xs text-slate-400">
-                            100 hesaba kadar toplu içe aktarın. Her satıra şu formatta yazın:<br>
-                            <code class="text-emerald-400 bg-slate-800 px-1 py-0.5 rounded">kullanici:auth_token:ct0</code>
-                        </p>
-                        <textarea id="acc-bulk-text" rows="8" placeholder="hesap1:70bcacd3a...:53ae1c...&#10;hesap2:88f1ba9c0...:11d0ab...&#10;hesap3:92ce18da3..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"></textarea>
+                        <div class="bg-amber-950/40 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300 space-y-1">
+                            <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-cookie-bite"></i> Cookie-Editor JSON & 100'lü Toplu Liste</p>
+                            <p class="text-slate-300 text-[11px]">Cookie-Editor eklentisinden <b>"Export JSON"</b> çıktısını direkt buraya yapıştırabilir veya her satıra <code class="text-amber-400">kullanici:auth_token:ct0</code> yazabilirsiniz.</p>
+                        </div>
+                        <textarea id="acc-bulk-text" rows="7" placeholder="Cookie-Editor JSON çıktısı ya da:&#10;hesap1:70bcacd3a...:53ae1c...&#10;hesap2:88f1ba9c0...:11d0ab...&#10;veya sadece auth_token çerezi..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"></textarea>
                         
-                        <button onclick="bulkImportAccounts()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+                        <button onclick="bulkImportAccounts()" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2">
                             <i class="fa-solid fa-cloud-arrow-up"></i> Toplu Hesapları Sisteme Aktar
                         </button>
                     </div>
@@ -1011,22 +1044,113 @@
         }
 
         function toggleImportMode(mode) {
-            const singleForm = document.getElementById('form-single-account');
-            const bulkForm = document.getElementById('form-bulk-account');
-            const btnSingle = document.getElementById('btn-mode-single');
-            const btnBulk = document.getElementById('btn-mode-bulk');
+            const forms = {
+                live: document.getElementById('form-live-account'),
+                bookmark: document.getElementById('form-bookmark-account'),
+                auto: document.getElementById('form-auto-account'),
+                bulk: document.getElementById('form-bulk-account')
+            };
+            const buttons = {
+                live: document.getElementById('btn-mode-live'),
+                bookmark: document.getElementById('btn-mode-bookmark'),
+                auto: document.getElementById('btn-mode-auto'),
+                bulk: document.getElementById('btn-mode-bulk')
+            };
 
-            if (mode === 'bulk') {
-                singleForm.classList.add('hidden');
-                bulkForm.classList.remove('hidden');
-                btnBulk.className = 'px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition';
-                btnSingle.className = 'px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition';
-            } else {
-                bulkForm.classList.add('hidden');
-                singleForm.classList.remove('hidden');
-                btnSingle.className = 'px-2.5 py-1 rounded-md font-semibold bg-emerald-600 text-white transition';
-                btnBulk.className = 'px-2.5 py-1 rounded-md font-semibold text-slate-400 hover:text-white transition';
+            for (const key in forms) {
+                if (key === mode) {
+                    forms[key].classList.remove('hidden');
+                    buttons[key].className = 'px-2 py-1.5 rounded-lg font-bold bg-emerald-600 text-white transition text-center';
+                } else {
+                    forms[key].classList.add('hidden');
+                    buttons[key].className = 'px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center';
+                }
             }
+        }
+
+        async function startInteractiveLogin() {
+            const btn = document.getElementById('btn-start-interactive');
+            const username = document.getElementById('acc-live-username').value.trim();
+            const originalHtml = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Tarayıcı Açıldı, Giriş Yapmanız Bekleniyor...';
+            showToast("🖥️ Canlı tarayıcı açıldı! Lütfen açılan pencerede X hesabınıza giriş yapın.");
+
+            try {
+                const res = await fetch('/api/accounts/interactive_login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username: username})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                    document.getElementById('acc-live-username').value = '';
+                    fetchStatus();
+                } else {
+                    showToast(data.error || "Giriş tamamlanamadı", true);
+                }
+            } catch (e) {
+                showToast("Canlı giriş başlatılamadı", true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        async function startAutoLogin() {
+            const btn = document.getElementById('btn-start-autologin');
+            const user = document.getElementById('acc-auto-user').value.trim();
+            const pass = document.getElementById('acc-auto-pass').value.trim();
+            const verify = document.getElementById('acc-auto-verify').value.trim();
+
+            if (!user || !pass) {
+                showToast("Kullanıcı adı ve şifre zorunludur", true);
+                return;
+            }
+
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Otomatik Giriş Yapılıyor...';
+            showToast(`🤖 @${user} hesabına otomatik giriş deneniyor...`);
+
+            try {
+                const res = await fetch('/api/accounts/auto_login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        username_or_email: user,
+                        password: pass,
+                        verify_credential: verify,
+                        role: 'helper'
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                    document.getElementById('acc-auto-user').value = '';
+                    document.getElementById('acc-auto-pass').value = '';
+                    document.getElementById('acc-auto-verify').value = '';
+                    fetchStatus();
+                } else {
+                    showToast(data.error || "Giriş başarısız", true);
+                }
+            } catch (e) {
+                showToast("Otomatik giriş servisi hatası", true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        function copyBookmarkletCode() {
+            const code = 'javascript:(function(){try{var c=document.cookie.split("; ");var g=function(n){var p=n+"=";var x=c.find(function(i){return i.indexOf(p)===0;});return x?x.substring(p.length):"";};var a=g("auth_token");var t=g("ct0");if(!a){alert("auth_token bulunamadı! Lütfen x.com üzerinde çalıştırın.");return;}var l=document.querySelector(\'a[data-testid="AppTabBar_Profile_Link"]\');var u=l?l.getAttribute("href").replace("/",""):prompt("Kullanıcı adınız (@ olmadan):","");if(!u)u="user_"+Date.now().toString().slice(-4);fetch("http://localhost:5000/api/accounts/quick_connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,auth_token:a,ct0:t,role:"helper"})}).then(function(r){return r.json();}).then(function(d){alert("🎉 @"+u+" hesabı bota bağlandı!");}).catch(function(e){alert("Bot paneline bağlanılamadı! http://localhost:5000 açık mı?");});}catch(e){alert("Hata: "+e);}})();';
+            navigator.clipboard.writeText(code).then(() => {
+                showToast("📋 Konsol kodu kopyalandı! Twitter sekmesinde F12 -> Console -> Yapıştır -> Enter yapın.");
+            }).catch(() => {
+                prompt("Aşağıdaki kodu kopyalayıp x.com açıkken F12 Console'a yapıştırın:", code);
+            });
         }
 
         async function bulkImportAccounts() {

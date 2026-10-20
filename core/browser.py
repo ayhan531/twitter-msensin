@@ -140,17 +140,21 @@ class TwitterBrowserManager:
             json.dump(storage_data, f, indent=2)
         return session_file
 
-    def interactive_login(self, account_name: str) -> bool:
+    def interactive_login(self, account_name: str = "") -> Dict[str, Any]:
         """
         Opens a visible browser for the user to log in to X manually.
-        Detects when login is complete, saves session state and exits cleanly.
+        Detects when login is complete, auto-detects username if omitted,
+        saves session state, extracts auth_token/ct0, and exits cleanly.
         """
-        print(f"\n[+] {account_name} hesabı için giriş tarayıcısı açılıyor...")
-        print("[!] Lütfen açılan pencerede X (Twitter) hesabınıza giriş yapın.")
-        print("[!] Giriş tamamlandığında sistem bunu otomatik algılayıp çerezleri kaydedecektir.\n")
+        display_name = account_name if account_name else "Yeni Hesap"
+        print(f"\n[+] {display_name} için etkileşimli giriş tarayıcısı açılıyor...")
+        print("[!] Lütfen açılan pencerede X (Twitter) hesabınıza normal şekilde giriş yapın.")
+        print("[!] Giriş tamamlandığında sistem bunu otomatik algılayıp oturumu kaydedecektir.\n")
         
         self.start()
-        context = self.launch_context(account_name, headless=False)
+        # Use a temporary context name if none given
+        temp_id = account_name or f"temp_login_{int(time.time())}"
+        context = self.launch_context(temp_id, headless=False)
         page = context.new_page()
         
         try:
@@ -158,30 +162,163 @@ class TwitterBrowserManager:
             
             # Wait up to 300 seconds (5 minutes) for user to log in
             logged_in = False
+            detected_uname = account_name.strip().lstrip("@") if account_name else ""
+
             for _ in range(150):
                 time.sleep(2)
                 cur_url = page.url
-                if "x.com/home" in cur_url or "twitter.com/home" in cur_url:
-                    logged_in = True
-                    break
+                
+                # Check URL for home or profile
+                if any(x in cur_url for x in ["x.com/home", "twitter.com/home", "x.com/i/flow/"]):
+                    if "x.com/home" in cur_url or "twitter.com/home" in cur_url:
+                        logged_in = True
+                        break
+
                 # Check for home feed or compose elements
                 try:
                     if page.locator("a[data-testid='AppTabBar_Home_Link']").count() > 0 or \
-                       page.locator("div[data-testid='tweetTextarea_0']").count() > 0:
+                       page.locator("div[data-testid='tweetTextarea_0']").count() > 0 or \
+                       page.locator("a[data-testid='AppTabBar_Profile_Link']").count() > 0:
                         logged_in = True
                         break
                 except Exception:
                     pass
 
             if logged_in:
-                print(f"\n[✓] Giriş başarıyla tespit edildi! {account_name} oturumu kaydediliyor...")
+                # Give 2 seconds for cookies to settle
                 time.sleep(2)
-                self.save_session(context, account_name)
-                print(f"[✓] Oturum başarıyla kaydedildi: {self.get_session_file(account_name)}")
-                return True
+
+                # Try to auto-detect username from profile link if not provided
+                if not detected_uname:
+                    try:
+                        profile_link = page.locator("a[data-testid='AppTabBar_Profile_Link']").first
+                        if profile_link.count() > 0:
+                            href = profile_link.get_attribute("href")
+                            if href:
+                                detected_uname = href.strip("/").split("/")[0]
+                    except Exception:
+                        pass
+
+                # If still empty, try to check cookies for twid
+                cookies = context.cookies()
+                auth_token = next((c["value"] for c in cookies if c["name"] == "auth_token"), "")
+                ct0 = next((c["value"] for c in cookies if c["name"] == "ct0"), "")
+
+                if not detected_uname:
+                    detected_uname = f"x_user_{int(time.time()) % 10000}"
+
+                print(f"\n[✓] Giriş başarıyla tespit edildi! @{detected_uname} oturumu kaydediliyor...")
+                self.save_session(context, detected_uname)
+                print(f"[✓] Oturum başarıyla kaydedildi: {self.get_session_file(detected_uname)}")
+
+                return {
+                    "success": True,
+                    "username": detected_uname,
+                    "auth_token": auth_token,
+                    "ct0": ct0,
+                    "message": f"@{detected_uname} hesabı başarıyla bağlandı!"
+                }
             else:
                 print("\n[!] Giriş zaman aşımına uğradı veya tamamlanmadı.")
-                return False
+                return {
+                    "success": False,
+                    "error": "Giriş zaman aşımına uğradı (5 dakika içinde tamamlanmadı)."
+                }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
         finally:
-            context.close()
+            try:
+                context.close()
+            except Exception:
+                pass
+            self.stop()
+
+    def automated_login(self, username_or_email: str, password: str, verify_credential: Optional[str] = None, headless: bool = True) -> Dict[str, Any]:
+        """
+        Fully automated headless / headed login with username/email and password.
+        Handles verification challenges (e.g. entering username when email was used).
+        """
+        self.start()
+        uname_clean = username_or_email.strip().lstrip("@")
+        context = self.launch_context(uname_clean, headless=headless)
+        page = context.new_page()
+
+        try:
+            print(f"[+] @{uname_clean} için otomatik giriş başlatılıyor...")
+            page.goto("https://x.com/i/flow/login", wait_until="domcontentloaded")
+            time.sleep(3)
+
+            # Step 1: Username / Email
+            username_input = page.locator("input[autocomplete='username'], input[name='text']").first
+            username_input.wait_for(timeout=15000)
+            username_input.fill(username_or_email)
+            time.sleep(1)
+
+            # Click Next or press Enter
+            next_btn = page.locator("button:has-text('İleri'), button:has-text('Next')").first
+            if next_btn.count() > 0:
+                next_btn.click()
+            else:
+                username_input.press("Enter")
+            time.sleep(3)
+
+            # Step 2: Check for Challenge / Phone or Username confirmation
+            challenge_input = page.locator("input[data-testid='ocfEnterTextTextInput'], input[name='text']").first
+            if challenge_input.count() > 0 and page.locator("input[type='password']").count() == 0:
+                print(f"[!] Doğrulama sorusu tespit edildi. Ek bilgi giriliyor...")
+                fill_val = verify_credential or uname_clean
+                challenge_input.fill(fill_val)
+                time.sleep(1)
+                challenge_next = page.locator("button:has-text('İleri'), button:has-text('Next')").first
+                if challenge_next.count() > 0:
+                    challenge_next.click()
+                else:
+                    challenge_input.press("Enter")
+                time.sleep(3)
+
+            # Step 3: Password
+            password_input = page.locator("input[name='password'], input[type='password']").first
+            password_input.wait_for(timeout=15000)
+            password_input.fill(password)
+            time.sleep(1)
+
+            # Click Log in
+            login_btn = page.locator("button[data-testid='LoginForm_Login_Button'], button:has-text('Giriş yap'), button:has-text('Log in')").first
+            if login_btn.count() > 0:
+                login_btn.click()
+            else:
+                password_input.press("Enter")
+            time.sleep(5)
+
+            # Check if login succeeded
+            cur_url = page.url
+            if "x.com/home" in cur_url or "twitter.com/home" in cur_url or page.locator("a[data-testid='AppTabBar_Home_Link']").count() > 0:
+                # Save session
+                self.save_session(context, uname_clean)
+                cookies = context.cookies()
+                auth_token = next((c["value"] for c in cookies if c["name"] == "auth_token"), "")
+                ct0 = next((c["value"] for c in cookies if c["name"] == "ct0"), "")
+                print(f"[✓] @{uname_clean} otomatik giriş başarılı ve kaydedildi!")
+                return {
+                    "success": True,
+                    "username": uname_clean,
+                    "auth_token": auth_token,
+                    "ct0": ct0,
+                    "message": f"@{uname_clean} hesabına başarıyla giriş yapıldı ve oturum kaydedildi!"
+                }
+            else:
+                # Check for error message
+                err_text = "Giriş başarısız oldu (Hatalı şifre veya 2FA/Güvenlik kodu gerekiyor)."
+                err_el = page.locator("div[data-testid='toast'], span:has-text('Wrong password'), span:has-text('Yanlış şifre')").first
+                if err_el.count() > 0:
+                    err_text = err_el.inner_text()
+                return {"success": False, "error": err_text}
+
+        except Exception as e:
+            return {"success": False, "error": f"Otomatik giriş sırasında hata: {str(e)}"}
+        finally:
+            try:
+                context.close()
+            except Exception:
+                pass
             self.stop()
