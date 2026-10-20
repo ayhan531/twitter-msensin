@@ -1,6 +1,6 @@
 """
-Technical Chart & Indicator Analysis Service
-Calculates RSI, EMAs, Support/Resistance, and renders dark-mode financial charts using Matplotlib.
+TradingView Pro Style Dark Candlestick Chart & Indicator Service
+Generates professional Japanese Candlestick charts with EMA, Volume, and RSI sub-panels.
 """
 
 import os
@@ -11,6 +11,8 @@ from typing import Dict, Any, List, Optional
 import matplotlib
 matplotlib.use("Agg")  # Headless backend for web / cloud servers
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from datetime import datetime
 
 warnings.filterwarnings("ignore")
 
@@ -44,7 +46,8 @@ class BISTChartService:
     def calculate_indicators(self, closes: List[float]) -> Dict[str, Any]:
         """Calculates RSI, EMA9, EMA21, Support, Resistance"""
         if not closes or len(closes) < 14:
-            return {"rsi": 50.0, "ema9": closes[-1] if closes else 0, "ema21": closes[-1] if closes else 0, "trend": "Nötr"}
+            current = closes[-1] if closes else 0.0
+            return {"rsi": 50.0, "ema9": current, "ema21": current, "trend": "Nötr", "current_price": current, "support": current, "resistance": current}
 
         # 1. RSI (14)
         deltas = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
@@ -62,26 +65,28 @@ class BISTChartService:
         rsi = round(100 - (100 / (1 + rs)), 1)
 
         # 2. EMAs
-        def ema(series, period):
+        def calc_ema(series, period):
             k = 2 / (period + 1)
-            ema_val = series[0]
-            for val in series[1:]:
-                ema_val = (val * k) + (ema_val * (1 - k))
-            return round(ema_val, 2)
+            val = series[0]
+            res = [val]
+            for x in series[1:]:
+                val = (x * k) + (val * (1 - k))
+                res.append(val)
+            return res
 
-        ema9 = ema(closes, 9)
-        ema21 = ema(closes, 21) if len(closes) >= 21 else ema(closes, len(closes))
+        ema9_series = calc_ema(closes, 9)
+        ema21_series = calc_ema(closes, 21) if len(closes) >= 21 else calc_ema(closes, len(closes))
 
         current_price = closes[-1]
         support = round(min(closes[-15:]), 2)
         resistance = round(max(closes[-15:]), 2)
 
         # Determine trend
-        if current_price > ema9 > ema21:
-            trend = "Güçlü Yükseliş (Boğa)"
-        elif current_price < ema9 < ema21:
-            trend = "Düşüş Eğilimi (Ayı)"
-        elif current_price > ema21:
+        if current_price > ema9_series[-1] > ema21_series[-1]:
+            trend = "Güçlü Boğa (Yükseliş Trendi)"
+        elif current_price < ema9_series[-1] < ema21_series[-1]:
+            trend = "Satıcılı (Düşüş Trendi)"
+        elif current_price > ema21_series[-1]:
             trend = "Pozitif Toparlanma"
         else:
             trend = "Yatay / Kararsız"
@@ -89,8 +94,10 @@ class BISTChartService:
         return {
             "current_price": round(current_price, 2),
             "rsi": rsi,
-            "ema9": ema9,
-            "ema21": ema21,
+            "ema9": round(ema9_series[-1], 2),
+            "ema21": round(ema21_series[-1], 2),
+            "ema9_series": ema9_series,
+            "ema21_series": ema21_series,
             "support": support,
             "resistance": resistance,
             "trend": trend
@@ -111,56 +118,151 @@ class BISTChartService:
         return indicators
 
     def generate_chart_image(self, symbol: str) -> Optional[str]:
-        """Generates a professional dark-themed technical chart and saves to disk"""
+        """
+        Generates a stunning TradingView Pro style Candlestick (Mum) chart with
+        Volume bars and RSI(14) indicator.
+        """
         hist = self.fetch_history(symbol, range_str="1mo", interval="1d")
         if not hist:
             return None
 
         quotes = hist.get("indicators", {}).get("quote", [{}])[0]
-        closes = [c for c in quotes.get("close", []) if c is not None]
-        if not closes or len(closes) < 5:
+        timestamps = hist.get("timestamp", [])
+        
+        opens = quotes.get("open", [])
+        highs = quotes.get("high", [])
+        lows = quotes.get("low", [])
+        closes = quotes.get("close", [])
+        volumes = quotes.get("volume", [])
+
+        # Filter out None values
+        valid_indices = [i for i in range(len(closes)) if closes[i] is not None and opens[i] is not None]
+        if len(valid_indices) < 5:
             return None
 
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 5.5), gridspec_kw={'height_ratios': [3, 1]}, facecolor='#111827')
+        opens = [opens[i] for i in valid_indices]
+        highs = [highs[i] for i in valid_indices]
+        lows = [lows[i] for i in valid_indices]
+        closes = [closes[i] for i in valid_indices]
+        volumes = [volumes[i] if volumes[i] else 0 for i in valid_indices]
         
-        # Upper Price Plot
-        ax1.set_facecolor('#1f2937')
-        ax1.plot(closes, color='#38bdf8', linewidth=2, label=f'{symbol} Kapanış')
+        N = len(closes)
+        x_indices = list(range(N))
+
+        # Indicators
+        indicators = self.calculate_indicators(closes)
+        ema9_vals = indicators.get("ema9_series", [])
+        ema21_vals = indicators.get("ema21_series", [])
+        current_price = closes[-1]
+        prev_close = closes[-2] if N > 1 else current_price
+        change_pct = round(((current_price - prev_close) / prev_close) * 100, 2)
+        trend_label = indicators.get("trend", "Nötr")
+
+        # Color scheme - TradingView Pro Dark
+        BG_COLOR = "#131722"
+        PANEL_COLOR = "#1e222d"
+        GRID_COLOR = "#2a2e39"
+        TEXT_COLOR = "#d1d4dc"
+        GREEN_COLOR = "#089981"  # Bullish candle
+        RED_COLOR = "#f23645"    # Bearish candle
+        EMA9_COLOR = "#ff9800"   # Orange
+        EMA21_COLOR = "#2962ff"  # Royal Blue
+        RSI_COLOR = "#ab47bc"    # Purple
+
+        fig, (ax_main, ax_rsi) = plt.subplots(
+            2, 1, 
+            figsize=(11, 6.5), 
+            gridspec_kw={'height_ratios': [3.5, 1.2]}, 
+            facecolor=BG_COLOR
+        )
+
+        # ---------------- 1. MAIN CANDLESTICK PANEL ----------------
+        ax_main.set_facecolor(PANEL_COLOR)
         
-        # EMAs
-        if len(closes) >= 9:
-            ema9_vals = []
-            k = 2 / 10
-            e = closes[0]
-            for c in closes:
-                e = (c * k) + (e * (1 - k))
-                ema9_vals.append(e)
-            ax1.plot(ema9_vals, color='#f59e0b', linestyle='--', label='EMA 9')
+        for i in range(N):
+            op = opens[i]
+            hi = highs[i]
+            lo = lows[i]
+            cl = closes[i]
+            
+            color = GREEN_COLOR if cl >= op else RED_COLOR
+            
+            # Draw wick (high to low)
+            ax_main.vlines(x=i, ymin=lo, ymax=hi, color=color, linewidth=1.2, alpha=0.9)
+            
+            # Draw candle body
+            body_bottom = min(op, cl)
+            body_height = max(abs(cl - op), 0.05)  # Min height for doji
+            ax_main.bar(x=i, height=body_height, bottom=body_bottom, width=0.68, color=color, edgecolor=color, linewidth=0.5)
 
-        ax1.set_title(f"{symbol} 1 Aylık Teknik Fiyat Grafiği & Trend", color='#f3f4f6', fontsize=12, pad=10)
-        ax1.tick_params(colors='#9ca3af')
-        ax1.grid(True, color='#374151', linestyle=':', alpha=0.6)
-        ax1.legend(facecolor='#111827', edgecolor='#4b5563', labelcolor='#f3f4f6')
+        # Plot EMAs
+        if len(ema9_vals) == N:
+            ax_main.plot(x_indices, ema9_vals, color=EMA9_COLOR, linewidth=1.5, label='EMA 9 (Kısa Vade)', alpha=0.9)
+        if len(ema21_vals) == N:
+            ax_main.plot(x_indices, ema21_vals, color=EMA21_COLOR, linewidth=1.5, label='EMA 21 (Trend)', alpha=0.9)
 
-        # Lower Volume / Dummy indicator Plot
-        ax2.set_facecolor('#1f2937')
-        volumes = quotes.get("volume", [])
-        clean_vols = [v if v else 0 for v in volumes[-len(closes):]]
-        ax2.bar(range(len(clean_vols)), clean_vols, color='#10b981', alpha=0.6, width=0.7)
-        ax2.set_ylabel("Hacim", color='#9ca3af', fontsize=9)
-        ax2.tick_params(colors='#9ca3af')
-        ax2.grid(True, color='#374151', linestyle=':', alpha=0.4)
+        # Horizontal Support & Resistance lines
+        supp = indicators.get("support", min(lows))
+        ress = indicators.get("resistance", max(highs))
+        ax_main.axhline(y=supp, color='#10b981', linestyle=':', linewidth=1.2, alpha=0.7, label=f'Destek: {supp} TL')
+        ax_main.axhline(y=ress, color='#ef4444', linestyle=':', linewidth=1.2, alpha=0.7, label=f'Direnç: {ress} TL')
+
+        # Current Price Badge on the right
+        price_badge_color = GREEN_COLOR if change_pct >= 0 else RED_COLOR
+        ax_main.text(
+            N - 0.5, current_price, f" {current_price:.2f} TL (%{change_pct:+.2f})",
+            color='#ffffff', fontsize=9, fontweight='bold',
+            verticalalignment='center',
+            bbox=dict(boxstyle='square,pad=0.25', facecolor=price_badge_color, edgecolor='none')
+        )
+
+        # Title / Watermark Header
+        clean_sym = symbol.upper().replace(".IS", "")
+        ax_main.set_title(
+            f"  {clean_sym} • 1 Günlük Mum Grafiği • Son: {current_price:.2f} TL  |  Görünüm: {trend_label}",
+            color=TEXT_COLOR, fontsize=12, fontweight='bold', loc='left', pad=12
+        )
+
+        ax_main.grid(True, color=GRID_COLOR, linestyle='--', linewidth=0.6, alpha=0.7)
+        ax_main.tick_params(colors=TEXT_COLOR, labelsize=9)
+        ax_main.legend(loc='upper left', facecolor=BG_COLOR, edgecolor=GRID_COLOR, labelcolor=TEXT_COLOR, fontsize=8)
+
+        # ---------------- 2. RSI(14) PANEL ----------------
+        ax_rsi.set_facecolor(PANEL_COLOR)
+        
+        # Calculate rolling RSI values for plotting
+        rsi_series = []
+        for end_idx in range(1, N + 1):
+            sub_closes = closes[:end_idx]
+            sub_ind = self.calculate_indicators(sub_closes)
+            rsi_series.append(sub_ind.get("rsi", 50.0))
+
+        ax_rsi.plot(x_indices, rsi_series, color=RSI_COLOR, linewidth=1.6, label='RSI (14)')
+        ax_rsi.axhline(70, color=RED_COLOR, linestyle='--', linewidth=0.8, alpha=0.7)
+        ax_rsi.axhline(30, color=GREEN_COLOR, linestyle='--', linewidth=0.8, alpha=0.7)
+        ax_rsi.fill_between(x_indices, 30, 70, color=RSI_COLOR, alpha=0.08)
+        
+        current_rsi = rsi_series[-1] if rsi_series else 50.0
+        ax_rsi.set_title(f"RSI (14): {current_rsi}  [ Aşırı Satım: 30 / Aşırı Alım: 70 ]", color=TEXT_COLOR, fontsize=8, loc='left', pad=4)
+        ax_rsi.set_ylim(15, 85)
+        ax_rsi.grid(True, color=GRID_COLOR, linestyle='--', linewidth=0.6, alpha=0.7)
+        ax_rsi.tick_params(colors=TEXT_COLOR, labelsize=8)
+
+        # Hide X-ticks on main, format bottom
+        ax_main.set_xticks([])
+        ax_rsi.set_xticks([0, N // 4, N // 2, 3 * N // 4, N - 1])
+        ax_rsi.set_xticklabels(["1 Ay Önce", "3 Hafta Önce", "2 Hafta Önce", "1 Hafta Önce", "Bugün"])
 
         plt.tight_layout()
-        filename = f"chart_{symbol.lower().replace('.is', '')}.png"
+        filename = f"chart_{clean_sym.lower()}.png"
         filepath = CHART_DIR / filename
-        plt.savefig(filepath, dpi=120, facecolor=fig.get_facecolor(), edgecolor='none')
+        plt.savefig(filepath, dpi=140, facecolor=BG_COLOR, edgecolor='none')
         plt.close(fig)
+
         return f"/static/charts/{filename}"
+
 
 if __name__ == "__main__":
     service = BISTChartService()
-    analysis = service.analyze_symbol("THYAO")
-    print("THYAO Analysis:", analysis)
-    img_path = service.generate_chart_image("THYAO")
-    print("Saved Chart Image:", img_path)
+    img = service.generate_chart_image("THYAO")
+    print("Generated Candlestick Chart:", img)

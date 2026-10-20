@@ -20,6 +20,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from config.persona_prompts import (
+    PERSONAS,
     BIST_ANALYST_SYSTEM_PROMPT,
     BIST_REPLY_PROMPT,
     FALLBACK_TEMPLATES,
@@ -104,78 +105,151 @@ class BISTContentGenerator:
             pass
         return None
 
-    def generate_bist_tweet(self, market_data: Dict[str, Any]) -> str:
+    def generate_bist_tweet(self, market_data: Dict[str, Any], target_symbol: Optional[str] = None, persona_key: str = "kurumsal_analist") -> str:
         """
-        Generates a complete, authentic BIST analysis tweet using AI or smart algorithmic fallback.
+        Generates an authentic BIST analysis tweet strictly synchronized with the chosen stock and persona.
         """
         index = market_data.get("index") or {}
         stocks = market_data.get("stocks") or []
         sentiment = market_data.get("sentiment", "Yatay")
 
-        stock = random.choice(stocks) if stocks else {
-            "symbol": "THYAO",
-            "price": 273.5,
-            "change": -2.5,
-            "change_pct": -0.9,
-            "day_high": 277.0,
-            "day_low": 271.0
-        }
+        persona_data = PERSONAS.get(persona_key, PERSONAS.get("kurumsal_analist"))
+        system_prompt = persona_data["system_prompt"]
 
-        # Format context for AI
+        # Ensure STRICT synchronization: If target_symbol is provided, find it!
+        stock = None
+        if target_symbol:
+            clean_sym = target_symbol.upper().replace(".IS", "")
+            stock = next((s for s in stocks if s.get("symbol", "").upper() == clean_sym), None)
+            if not stock:
+                # Fetch on demand to ensure accurate data
+                from core.market_data import BISTMarketData
+                bmd = BISTMarketData()
+                stock = bmd.get_ticker_data(clean_sym)
+
+        if not stock:
+            stock = stocks[0] if stocks else {
+                "symbol": "THYAO",
+                "price": 273.5,
+                "change": -2.5,
+                "change_pct": -0.9,
+                "day_high": 277.0,
+                "day_low": 271.0
+            }
+
+        sym = stock.get("symbol", "THYAO")
+        price = stock.get("price", 270.0)
+        chg_pct = stock.get("change_pct", 0.0)
+
+        # Context prompt strictly for this stock
         context_prompt = f"""
 Canlı Borsa İstanbul Piyasa Verileri:
 - BIST 100 Endeksi: {index.get('price', '11.720')} TL (Değişim: %{index.get('change_pct', 0)})
 - Genel Piyasa Havası: {sentiment}
-- Öne Çıkan Hisse: {stock.get('symbol')} ({stock.get('price')} TL, Değişim: %{stock.get('change_pct')}%, Gün İçi Aralık: {stock.get('day_low')} - {stock.get('day_high')} TL)
+- Analiz Edilen Hisse: {sym} ({price} TL, Değişim: %{chg_pct}%, Gün İçi: {stock.get('day_low')} - {stock.get('day_high')} TL)
 
-Görev: Bu verilere dayanarak X (Twitter) için çarpıcı, teknik terimler içeren, 200-260 karakterlik orijinal bir borsa yorumu yaz. Sonuna (YTD) ekle.
+Karakter Görevi: Karakterine ve üslubuna tam uyarak #{sym} için X (Twitter) analizi yaz. Mutlaka #{sym} hissesinden bahset, başka hisse uydurma. Sonuna (YTD) ekle.
 """
 
         ai_response = None
         if self.provider == "gemini":
-            ai_response = self._call_gemini_api(context_prompt, BIST_ANALYST_SYSTEM_PROMPT)
+            ai_response = self._call_gemini_api(context_prompt, system_prompt)
         elif self.provider == "groq":
-            ai_response = self._call_groq_api(context_prompt, BIST_ANALYST_SYSTEM_PROMPT)
+            ai_response = self._call_groq_api(context_prompt, system_prompt)
 
         if ai_response:
             return ai_response
 
-        # High-quality dynamic fallback template if AI is offline or key not provided
-        sym = stock.get("symbol", "THYAO")
-        price = stock.get("price", 270.0)
-        chg_pct = stock.get("change_pct", 0.0)
-        chg_text = f"günü %{abs(chg_pct)} primle sürdürüyor" if chg_pct >= 0 else f"ara düzeltmeyle %{abs(chg_pct)} eksiye çekildi"
+        # Use persona-specific fallback templates
         support = round(price * 0.965, 2)
         resistance = round(price * 1.035, 2)
+        templates = persona_data.get("fallback_templates", FALLBACK_TEMPLATES)
+        template = random.choice(templates)
         
-        template = random.choice(FALLBACK_TEMPLATES)
-        text = template.format(
+        return template.format(
             symbol=sym,
             price=price,
-            change_text=chg_text,
             change_pct=chg_pct,
             support=support,
             resistance=resistance,
             day_high=stock.get("day_high", round(price * 1.02, 2)),
+            day_low=stock.get("day_low", round(price * 0.98, 2)),
+            trend_label=sentiment,
             index_price=index.get("price", "11.720"),
-            index_change_pct=index.get("change_pct", "-0.5"),
-            sentiment_desc=sentiment,
-            stock_sym=sym,
-            stock_price=price
+            index_change_pct=index.get("change_pct", "-0.5")
         )
-        return text
 
-    def generate_reply(self, parent_tweet_text: str, custom_pool: Optional[List[str]] = None, custom_system_prompt: Optional[str] = None) -> str:
+    def generate_chart_tweet(self, indicators: Dict[str, Any], persona_key: str = "kurumsal_analist") -> str:
         """
-        Generates an authentic BIST reply to engage on a tweet.
-        Can use custom user comment pool, custom AI persona, or standard fallback.
+        Generates technical commentary strictly synchronized with the given chart indicators and persona.
+        """
+        sym = indicators.get("symbol", "THYAO")
+        price = indicators.get("current_price", 0)
+        rsi = indicators.get("rsi", 50)
+        ema9 = indicators.get("ema9", price)
+        ema21 = indicators.get("ema21", price)
+        support = indicators.get("support", price)
+        resistance = indicators.get("resistance", price)
+        trend = indicators.get("trend", "Nötr")
+
+        persona_data = PERSONAS.get(persona_key, PERSONAS.get("kurumsal_analist"))
+        system_prompt = persona_data["system_prompt"]
+
+        prompt = f"""
+Grafik Analiz Verileri:
+- Hisse: #{sym}
+- Son Fiyat: {price} TL
+- RSI (14): {rsi}
+- EMA 9: {ema9} TL | EMA 21: {ema21} TL
+- Destek: {support} TL | Direnç: {resistance} TL
+- Trend: {trend}
+
+Görev: Bu teknik mum grafiği göstergelerine dayanarak #{sym} için karakterine uygun bir tweet yaz. Mutlaka #{sym} hissesinden ve bu seviyelerden bahset. Sonuna (YTD) ekle.
+"""
+        ai_response = None
+        if self.provider == "gemini":
+            ai_response = self._call_gemini_api(prompt, system_prompt)
+        elif self.provider == "groq":
+            ai_response = self._call_groq_api(prompt, system_prompt)
+
+        if ai_response:
+            return ai_response
+
+        # Fallback templates for this persona
+        templates = persona_data.get("fallback_templates", FALLBACK_TEMPLATES)
+        template = random.choice(templates)
+        return template.format(
+            symbol=sym,
+            price=price,
+            change_pct=round(((price - ema9) / ema9) * 100, 2) if ema9 else 0.0,
+            support=support,
+            resistance=resistance,
+            day_high=resistance,
+            day_low=support,
+            trend_label=trend,
+            rsi=rsi,
+            ema9=ema9,
+            ema21=ema21
+        )
+
+    def generate_reply(
+        self, 
+        parent_tweet_text: str, 
+        custom_pool: Optional[List[str]] = None, 
+        custom_system_prompt: Optional[str] = None,
+        persona_key: str = "kurumsal_analist"
+    ) -> str:
+        """
+        Generates an authentic BIST reply to engage on a tweet using the specified persona or custom pool.
         """
         # If user defined a custom comment pool and wants to use it
         if custom_pool and len(custom_pool) > 0 and random.random() < 0.6:
             return random.choice(custom_pool)
 
+        persona_data = PERSONAS.get(persona_key, PERSONAS.get("kurumsal_analist"))
+        system_prompt = custom_system_prompt or persona_data.get("reply_prompt", BIST_REPLY_PROMPT)
+        
         prompt = f"Şu tweete cevap yaz:\n\"{parent_tweet_text}\""
-        system_prompt = custom_system_prompt or BIST_REPLY_PROMPT
         
         ai_response = None
         if self.provider == "gemini":
@@ -186,11 +260,12 @@ Görev: Bu verilere dayanarak X (Twitter) için çarpıcı, teknik terimler içe
         if ai_response:
             return ai_response
 
-        # Fallback to custom pool if provided, else standard fallback
+        # Fallback to custom pool if provided, else persona-specific fallback replies
         if custom_pool and len(custom_pool) > 0:
             return random.choice(custom_pool)
 
-        return random.choice(FALLBACK_REPLIES)
+        replies = persona_data.get("fallback_replies", FALLBACK_REPLIES)
+        return random.choice(replies)
 
     def generate_news_tweet(self, news_item: Dict[str, Any]) -> str:
         """
@@ -220,42 +295,6 @@ Görev: Bu haberi Borsa İstanbul (BIST), sektörler ve hisseler üzerindeki ola
             f"Piyasa Notu: {title[:85]}. Gelişmenin orta vadeli bilançolara yansıması belirleyici olacaktır. Trend kırılımlarına dikkat edilmeli. #BIST100 #borsa (YTD)"
         ]
         return random.choice(templates)
-
-    def generate_chart_tweet(self, indicators: Dict[str, Any]) -> str:
-        """
-        Generates technical commentary from indicators (RSI, EMA, support/resistance, trend).
-        """
-        sym = indicators.get("symbol", "THYAO")
-        price = indicators.get("current_price", 0)
-        rsi = indicators.get("rsi", 50)
-        ema9 = indicators.get("ema9", price)
-        ema21 = indicators.get("ema21", price)
-        support = indicators.get("support", price)
-        resistance = indicators.get("resistance", price)
-        trend = indicators.get("trend", "Nötr")
-
-        prompt = f"""
-Hisse/Grafik: {sym}
-Son Fiyat: {price} TL
-RSI (14): {rsi}
-EMA (9): {ema9} TL | EMA (21): {ema21} TL
-Destek: {support} TL | Direnç: {resistance} TL
-Teknik Görünüm: {trend}
-
-Görev: Bu teknik göstergelere dayanarak grafiği yorumlayan 200-260 karakterlik uzman bir teknik analiz tweeti yaz. Sonuna (YTD) ekle.
-"""
-        ai_response = None
-        if self.provider == "gemini":
-            ai_response = self._call_gemini_api(prompt, BIST_ANALYST_SYSTEM_PROMPT)
-        elif self.provider == "groq":
-            ai_response = self._call_groq_api(prompt, BIST_ANALYST_SYSTEM_PROMPT)
-
-        if ai_response:
-            return ai_response
-
-        # Technical chart fallback
-        rsi_comment = "RSI aşırı satım bölgesinden tepki arayışında" if rsi < 35 else ("RSI aşırı alım bölgesinde dinlenme sinyali veriyor" if rsi > 70 else f"RSI {rsi} seviyesinde dengeli")
-        return f"#{sym} {price} TL. {rsi_comment}. EMA9 ({ema9} TL) ve EMA21 ({ema21} TL) takibimizde. {support} TL destek, {resistance} TL üzeri kapanışlar momentum kazandırır. Trend: {trend}. #BIST100 #teknikanaliz (YTD)"
 
 
 

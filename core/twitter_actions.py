@@ -13,9 +13,41 @@ def human_delay(min_sec: float = 2.0, max_sec: float = 5.0):
     delay = random.uniform(min_sec, max_sec)
     time.sleep(delay)
 
+def human_type(page: Page, locator, text: str):
+    """Types text with natural human speed and micro-pauses to prevent bot detection"""
+    locator.click()
+    human_delay(0.4, 0.8)
+    
+    # Fast natural typing in word chunks or characters
+    words = text.split(" ")
+    for idx, word in enumerate(words):
+        # Type word
+        locator.press_sequentially(word + " ", delay=random.randint(25, 65))
+        # Occasional micro-pause between sentences or long words
+        if idx % random.randint(4, 7) == 0:
+            time.sleep(random.uniform(0.15, 0.35))
+
 class TwitterActions:
     def __init__(self, page: Page):
         self.page = page
+
+    def warmup_browse(self, duration_sec: float = 5.0):
+        """
+        Simulates natural human timeline browsing to bypass X anti-bot telemetry.
+        Scrolls feed, hovers on content, generates genuine mouse events.
+        """
+        try:
+            scrolls = random.randint(2, 4)
+            for _ in range(scrolls):
+                scroll_y = random.randint(250, 600)
+                self.page.mouse.wheel(0, scroll_y)
+                time.sleep(random.uniform(1.2, 2.5))
+                # Slight scroll up mimicking reading
+                if random.random() < 0.4:
+                    self.page.mouse.wheel(0, -random.randint(100, 200))
+                    time.sleep(random.uniform(0.8, 1.5))
+        except Exception:
+            pass
 
     def is_logged_in(self) -> bool:
         """Check if current page is logged into X"""
@@ -40,7 +72,9 @@ class TwitterActions:
         try:
             print(f"[+] Tweet hazırlanıyor: {text[:60]}...")
             self.page.goto("https://x.com/home", wait_until="domcontentloaded", timeout=25000)
-            human_delay(2, 4)
+            human_delay(1.5, 3)
+            # Anti-bot warm-up browse
+            self.warmup_browse(3.0)
 
             # Find visible compose textarea on home feed or compose modal
             textarea = self.page.locator("div[data-testid='tweetTextarea_0']:visible").first
@@ -50,7 +84,7 @@ class TwitterActions:
             if textarea.count() == 0:
                 # Try opening compose post modal
                 self.page.goto("https://x.com/compose/post", wait_until="domcontentloaded", timeout=20000)
-                human_delay(2, 3)
+                human_delay(1.5, 3)
                 textarea = self.page.locator("div[data-testid='tweetTextarea_0']:visible").first
                 if textarea.count() == 0:
                     textarea = self.page.locator("div[role='textbox']:visible").first
@@ -58,9 +92,8 @@ class TwitterActions:
             if textarea.count() == 0:
                 return {"success": False, "error": "Tweet metin yazma alanı bulunamadı"}
 
-            textarea.click()
-            human_delay(0.5, 1.2)
-            textarea.fill(text)
+            # Type text like a real human with natural keystroke timing
+            human_type(self.page, textarea, text)
             human_delay(1, 2)
 
             # Attach media if provided (e.g. chart image)
@@ -96,7 +129,6 @@ class TwitterActions:
         except PlaywrightTimeoutError:
             return {"success": False, "error": "Zaman aşımı: Tweet alanı veya butonu bulunamadı"}
         except Exception as e:
-            return {"success": False, "error": str(e)}
             return {"success": False, "error": str(e)}
 
     def like_tweet(self, tweet_url: str) -> Dict[str, Any]:
@@ -170,9 +202,7 @@ class TwitterActions:
                     reply_box = self.page.locator("div[data-testid='tweetTextarea_0']").first
 
             reply_box.wait_for(state="visible", timeout=12000)
-            reply_box.click()
-            human_delay(0.5, 1)
-            reply_box.fill(reply_text)
+            human_type(self.page, reply_box, reply_text)
             human_delay(1, 2)
 
             # Send reply

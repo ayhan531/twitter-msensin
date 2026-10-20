@@ -395,12 +395,13 @@ async def get_chart_analysis(symbol: str):
 
 class GenerateChartTweetPayload(BaseModel):
     symbol: str
+    persona: str = "kurumsal_analist"
 
 @app.post("/api/chart/generate")
 async def generate_chart_tweet(payload: GenerateChartTweetPayload):
     analysis = chart_service.analyze_symbol(payload.symbol)
     ai_gen = get_ai_generator()
-    tweet_text = ai_gen.generate_chart_tweet(analysis)
+    tweet_text = ai_gen.generate_chart_tweet(analysis, persona_key=payload.persona)
     return {"success": True, "tweet": tweet_text, "analysis": analysis}
 
 class PostTweetPayload(BaseModel):
@@ -506,6 +507,55 @@ async def boost_tweet_endpoint(payload: BoostTweetPayload, background_tasks: Bac
 
     background_tasks.add_task(run_boost)
     return {"success": True, "message": f"{len(helpers)} hesapla etkileşim başlatıldı"}
+
+@app.post("/api/pod/mutual_ring")
+async def mutual_ring_boost(background_tasks: BackgroundTasks):
+    cfg = get_config()
+    accounts = [a.get("username") for a in cfg.get("accounts", []) if browser_mgr.has_session(a.get("username"))]
+    if len(accounts) < 2:
+        return JSONResponse({"success": False, "error": "Karşılıklı kasma için en az 2 aktif oturumlu hesap gereklidir"}, status_code=400)
+
+    log_event(f"Karşılıklı Hesap Kasma Çemberi ({len(accounts)} hesap) başlatılıyor...", "info")
+
+    def run_ring():
+        ai_gen = get_ai_generator()
+        pod_mgr = EngagementPodManager(browser_mgr, ai_gen)
+        cmt_cfg = cfg.get("comment_settings", {})
+        custom_pool = cmt_cfg.get("custom_pool")
+        custom_prompt = cmt_cfg.get("custom_prompt")
+
+        for acc in accounts:
+            ctx = browser_mgr.launch_context(acc, headless=True)
+            latest_url = None
+            try:
+                page = ctx.new_page()
+                actions = TwitterActions(page)
+                latest_url = actions.get_latest_tweet_url_of_user(acc)
+            except Exception:
+                pass
+            finally:
+                ctx.close()
+                browser_mgr.stop()
+
+            if latest_url:
+                helpers = [h for h in accounts if h.lower() != acc.lower()]
+                log_event(f"@{acc} son tweeti diğer {len(helpers)} hesapla kasılıyor: {latest_url}", "info")
+                pod_mgr.boost_tweet(
+                    latest_url, 
+                    helpers, 
+                    do_like=True, 
+                    do_retweet=True, 
+                    do_comment=True, 
+                    custom_comments=custom_pool,
+                    custom_prompt=custom_prompt,
+                    headless=True
+                )
+                time.sleep(random.uniform(20, 45))
+
+        log_event("Karşılıklı hesap kasma çemberi başarıyla tamamlandı!", "success")
+
+    background_tasks.add_task(run_ring)
+    return {"success": True, "message": f"{len(accounts)} hesap için karşılıklı kasma çemberi başlatıldı"}
 
 class AutopilotTogglePayload(BaseModel):
     enabled: bool

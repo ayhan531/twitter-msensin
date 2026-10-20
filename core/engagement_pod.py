@@ -32,7 +32,7 @@ class EngagementPodManager:
     ) -> List[Dict[str, Any]]:
         """
         Takes a target tweet URL and uses helper accounts to Like, RT, and Comment on it.
-        Optimized for 100+ accounts with sequential memory cleanup and human jitter.
+        Each helper account comments using a distinct persona (Agresif, Sevecen, Temkinli, Kurumsal).
         """
         results = []
         print(f"\n========================================================")
@@ -41,8 +41,11 @@ class EngagementPodManager:
         print(f"[*] Katılacak Hesap Sayısı: {len(helper_accounts)}")
         print(f"========================================================\n")
 
+        available_personas = ["agresif_trader", "sevecen_dost", "temkinli_yatirimci", "kurumsal_analist"]
+
         for idx, acc in enumerate(helper_accounts):
-            print(f"\n>>> [{idx + 1}/{len(helper_accounts)}] Hesap Devreye Giriyor: @{acc}")
+            acc_persona = available_personas[idx % len(available_personas)]
+            print(f"\n>>> [{idx + 1}/{len(helper_accounts)}] Hesap Devreye Giriyor: @{acc} (Persona: {acc_persona})")
             
             if not self.browser_mgr.has_session(acc):
                 print(f"[!] HATA: @{acc} için oturum çerezi bulunamadı. Atlanıyor.")
@@ -51,7 +54,7 @@ class EngagementPodManager:
 
             # Random jitter before logging in (scaled for multi-account safety)
             if idx > 0:
-                wait_time = random.uniform(8, 22)
+                wait_time = random.uniform(12, 28)
                 print(f"[⏳] Hesaplar arası doğal bekleme süresi: {round(wait_time, 1)} saniye...")
                 time.sleep(wait_time)
 
@@ -80,12 +83,13 @@ class EngagementPodManager:
                     acc_result["retweeted"] = rt_res.get("success", False)
                     human_delay(2, 5)
 
-                # 3. Yorum (AI Comment or Custom Pool)
+                # 3. Yorum (AI Comment in distinct persona or Custom Pool)
                 if do_comment:
                     comment_text = self.ai_gen.generate_reply(
                         parent_tweet_text or "Borsa analizi",
                         custom_pool=custom_comments,
-                        custom_system_prompt=custom_prompt
+                        custom_system_prompt=custom_prompt,
+                        persona_key=acc_persona
                     )
                     reply_res = actions.reply_tweet(tweet_url, comment_text)
                     acc_result["commented"] = reply_res.get("success", False)
@@ -112,32 +116,46 @@ class EngagementPodManager:
         self,
         poster_account: str,
         helper_accounts: List[str],
+        target_symbol: Optional[str] = "THYAO",
         custom_tweet: Optional[str] = None,
         media_path: Optional[str] = None,
+        persona: str = "kurumsal_analist",
         headless: bool = True
     ) -> Dict[str, Any]:
         """
-        1. poster_account posts a fresh AI-generated BIST tweet (with optional image/chart).
-        2. helper_accounts immediately like, retweet, and reply to it.
+        1. poster_account posts a fresh AI-generated BIST tweet strictly matching target_symbol and chart.
+        2. helper_accounts immediately like, retweet, and reply to it in diverse personas.
         """
+        clean_sym = (target_symbol or "THYAO").upper().replace(".IS", "")
         print(f"\n========================================================")
-        print(f"[*] BIST TWEET VE KARSILIKLI ETKİLEŞİM AKISI")
+        print(f"[*] BIST TWEET VE KARŞILIKLI ETKİLEŞİM AKIŞI")
         print(f"[*] Tweet Atacak Hesap: @{poster_account}")
+        print(f"[*] Hedef Hisse: #{clean_sym}")
         print(f"[*] Destekleyecek Hesaplar: {', '.join('@' + a for a in helper_accounts)}")
-        if media_path:
-            print(f"[*] Eklenecek Fotoğraf: {media_path}")
         print(f"========================================================\n")
 
-        # Step 1: Generate Content
+        # Step 1: Generate Chart & Synchronized Content
+        from core.chart_service import BISTChartService
+        cs = BISTChartService()
+        indicators = cs.analyze_symbol(clean_sym)
+        
+        # If media_path not explicitly passed, generate pro candlestick chart
+        if not media_path:
+            chart_rel_path = cs.generate_chart_image(clean_sym)
+            if chart_rel_path:
+                from pathlib import Path
+                media_path = str(Path(__file__).resolve().parent.parent / "web" / "static" / "charts" / f"chart_{clean_sym.lower()}.png")
+
         if custom_tweet:
             tweet_text = custom_tweet
         else:
-            print("[+] Canli BIST verileri cekiliyor...")
-            m_data = self.market_data.get_market_overview()
-            print("[+] BIST Analist Yapay Zekasi ozgun tweet uretiyor...")
-            tweet_text = self.ai_gen.generate_bist_tweet(m_data)
+            print(f"[+] #{clean_sym} için teknik mum verileri ve göstergeler hesaplanıyor...")
+            print(f"[+] {persona} karakterinde özgün tweet üretiliyor...")
+            tweet_text = self.ai_gen.generate_chart_tweet(indicators, persona_key=persona)
 
-        print(f"\n[*] Hazirlanan Tweet Metni ({len(tweet_text)} karakter):\n\"{tweet_text}\"\n")
+        print(f"\n[*] Hazırlanan Tweet Metni ({len(tweet_text)} karakter):\n\"{tweet_text}\"\n")
+        if media_path:
+            print(f"[*] İliştirilecek Grafik: {media_path}")
 
         # Step 2: Post the Tweet
         if not self.browser_mgr.has_session(poster_account):

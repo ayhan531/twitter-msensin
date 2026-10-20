@@ -180,7 +180,7 @@
         <section id="tab-charts" class="tab-content hidden space-y-6">
             <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-3 w-full md:w-auto">
-                    <label class="text-sm font-medium text-slate-300">Hisse Seç:</label>
+                    <label class="text-sm font-medium text-slate-300">Hisse:</label>
                     <select id="chart-symbol-select" onchange="loadChartAnalysis()" class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
                         <option value="THYAO">THYAO - Türk Hava Yolları</option>
                         <option value="ASELS">ASELS - Aselsan</option>
@@ -191,10 +191,18 @@
                         <option value="XU100">XU100 - BIST 100 Endeksi</option>
                         <option value="SASA">SASA - Sasa Polyester</option>
                     </select>
+
+                    <label class="text-sm font-medium text-slate-300">Karakter:</label>
+                    <select id="chart-persona-select" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        <option value="kurumsal_analist">🧐 Kurumsal / Teknik Analist</option>
+                        <option value="agresif_trader">⚡ Agresif Day Trader</option>
+                        <option value="temkinli_yatirimci">🛡️ Temkinli Yatırımcı</option>
+                        <option value="sevecen_dost">🤗 Sevecen Borsa Dostu</option>
+                    </select>
                 </div>
                 <div class="flex gap-2 w-full md:w-auto">
                     <button onclick="generateChartTweet()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition flex items-center gap-2">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> Grafiği Yorumla & Tweetle
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Bu Grafiği Yorumla & Tweetle
                     </button>
                 </div>
             </div>
@@ -273,8 +281,15 @@
                         </div>
 
                         <button onclick="startBoostTweet()" id="btn-start-boost" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-bolt"></i> Tüm Hesaplarla Kasma İşlemini Başlat
+                            <i class="fa-solid fa-bolt"></i> Verilen Tweeti Tüm Hesaplarla Kas
                         </button>
+
+                        <div class="pt-4 border-t border-slate-800">
+                            <button onclick="startMutualRingBoost()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20">
+                                <i class="fa-solid fa-arrows-rotate"></i> 🔄 Bağlı Hesapları Birbirine Kastır (Mutual Cross-Boost)
+                            </button>
+                            <p class="text-[11px] text-slate-400 text-center mt-1.5">Tüm bağlı hesapların en son paylaşımlarını birbirine otomatik beğendirir, RT yaptırır ve yorum attırır.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -771,22 +786,42 @@
 
         async function generateChartTweet() {
             const sym = document.getElementById('chart-symbol-select').value;
-            showToast(`${sym} grafiği yapay zeka ile analiz ediliyor...`);
+            const persona = document.getElementById('chart-persona-select').value;
+            showToast(`${sym} grafiği (${persona}) yapay zeka ile analiz ediliyor...`);
             try {
                 const res = await fetch('/api/chart/generate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({symbol: sym})
+                    body: JSON.stringify({symbol: sym, persona: persona})
                 });
                 const data = await res.json();
                 if (data.success) {
                     document.getElementById('compose-text').value = data.tweet;
+                    // Auto-sync chart attachment dropdown to match THIS EXACT SYMBOL!
+                    document.getElementById('compose-attach-chart').checked = true;
+                    document.getElementById('compose-chart-symbol').value = sym;
                     updateCharCount();
                     toggleTab('compose');
-                    showToast("Grafik yorumu tweet alanına aktarıldı!");
+                    showToast(`${sym} teknik analizi tweet alanına aktarıldı!`);
                 }
             } catch (e) {
                 showToast("Yorum üretilemedi", true);
+            }
+        }
+
+        async function startMutualRingBoost() {
+            if (!confirm("Tüm bağlı hesapların birbirinin son tweetlerini karşılıklı beğenip retweet atmasını onaylıyor musunuz?")) return;
+            showToast("Karşılıklı hesap kasma çemberi başlatıldı...");
+            try {
+                const res = await fetch('/api/pod/mutual_ring', {method: 'POST'});
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                } else {
+                    showToast(data.error || "Hata oluştu", true);
+                }
+            } catch (e) {
+                showToast("İşlem başlatılamadı", true);
             }
         }
 
