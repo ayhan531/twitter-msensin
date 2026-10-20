@@ -1,35 +1,36 @@
-# 𝕏 (Twitter) BIST 100 AI Web Otomasyon & Hesap Kasma Paneli
+# 𝕏 (Twitter) BIST 100 AI Web Otomasyon & 100+ Hesap Kasma Paneli
 
-Render.com üzerinde **%100 ÜCRETSİZ ($0)** olarak çalışabilen, **X Developer API ücreti ödemeden** birden fazla X hesabının birbirini kasmasını (beğeni, retweet, yapay zeka yorumu) sağlayan, **anlık haberleri ve teknik grafikleri (RSI, EMA, Destek/Direnç)** yorumlayan tam teşekküllü Web Yönetim Sistemi.
+Render.com üzerinde **%100 ÜCRETSİZ ($0)** olarak çalışabilen, **X Developer API ücreti ödemeden** 100'e kadar X hesabını birbirini kasması (beğeni, retweet, yapay zeka yorumu) için yöneten, **seçilen hedef hesapları sabitleyip yeni tweet attıklarında anında kasan**, anlık haberleri ve teknik grafikleri (RSI, EMA, Destek/Direnç) yorumlayan profesyonel Web Otomasyon Sistemi.
 
 ---
 
-## 🚀 Yeni Özellikler
+## 🚀 Yeni Eklenen Dev Özellikler
 
-1. **🌐 Modern Web Yönetim Paneli (FastAPI & Tailwind Dark UI):**
-   - Her şeyi tarayıcınızdan tek tıkla yönetin.
-   - Hesapları bağlayın, durumlarını görün.
-   - Canlı BIST 100 endeksi ve hisseleri izleyin.
-   - Tek tıkla tweet atın ve havuzdaki diğer hesapların o tweeti anında kasmasını sağlayın.
+1. **🚀 100+ Hesap Toplu İçe Aktarma (Bulk Importer):**
+   - Tek tek hesap eklemekle uğraşmayın. 100 hesabı birden şu formatta yapıştırıp tek tıkla sisteme bağlayabilirsiniz:
+     ```text
+     hesap1:auth_token1:ct01
+     hesap2:auth_token2:ct02
+     hesap3:auth_token3
+     ```
+   - Sistem tüm hesapların oturumlarını saniyeler içinde oluşturur ve RAM dostu ardışık kuyrukla çalıştırır.
 
-2. **📰 Anlık Borsa & KAP Haberleri:**
-   - Google News RSS, KAP ve finans bültenlerinden 0 TL maliyetle anlık haberleri toplar.
-   - Beğendiğiniz habere **"Yorumla & Tweetle"** diyerek yapay zekaya profesyonel finans analizi yazdırabilirsiniz.
+2. **🎯 Sabit Hedef İzleme Listesi (Target Watchlist):**
+   - İstediğiniz hesapları (örn: `@Borsagenci` veya piyasa fenomenlerini) listeye sabitleyin.
+   - Sistem bu hesapları arka planda otomatik izler; **yeni bir tweet attıkları an, havuzdaki tüm hesaplarınız saniyeler içinde o tweeti beğenir, retweet yapar ve yapay zeka teyit yorumu atar!**
 
-3. **📈 Teknik Grafik & Gösterge Analizi:**
-   - 1 aylık OHLCV fiyat geçmişi üzerinden **RSI (14), EMA 9, EMA 21, Destek ve Direnç** seviyelerini otomatik hesaplar.
-   - Koyu temalı (dark mode) profesyonel teknik analiz grafiğini çizer.
-   - Yapay zeka bu grafiği bir borsa uzmanı gibi yorumlayıp tweet hazırlar.
+3. **💬 Yorum Stüdyosu (Comment & Tone Studio):**
+   - Hesapların atacağı yorumları siz belirleyin:
+     - **🤖 Sadece Yapay Zeka:** Tweetin içeriğine ve hisseye göre tamamen özgün yorumlar.
+     - **📝 Hazır Yorum Havuzu:** Kendi yazdığınız cümle listesinden rastgele seçer.
+     - **⚡ Hibrit Mod:** Hazır yorumlarla yapay zekayı harmanlar.
+   - Yapay zeka üslubunu tek satırla değiştirin (örn: *"Samimi ol, tebrik et, kısa yaz"*).
 
-4. **🚀 Çapraz Hesap Kasma Havuzu (Boost Pod):**
-   - Herhangi bir tweet linkini panele yapıştırın.
-   - Havuzdaki tüm hesaplarınız doğal insan gecikmeleriyle (15-45 sn) sırayla o tweeti **beğensin, retweet yapsın ve yapay zeka ile teyit yorumu atsın**.
+4. **📸 Otomatik Teknik Grafik ve Fotoğraf Yükleme:**
+   - Tweet atarken *"Grafiği Fotoğraf Olarak Ekle"* kutusunu işaretleyin; sistem hissenin **RSI, EMA9, EMA21, Destek ve Direnç** grafiğini otomatik çizip görsel olarak tweet'e iliştirir.
 
-5. **🤖 Otomatik Pilot (Background Worker):**
-   - Bilgisayarınız kapalı olsa bile Render Cloud üzerinde belirlediğiniz aralıklarla (örneğin saatte bir) otomatik olarak BIST analizi paylaşır ve diğer hesaplarla birbirini kasar.
-
-6. **☁️ Render.com 1-Tıkla Ücretsiz Dağıtım (Docker & Blueprint):**
-   - Hazır `Dockerfile` ve `render.yaml` ile Render'ın ücretsiz Docker Web Service planında sıfır maliyetle çalışır.
+5. **🤖 Otomatik Pilot (Render Cloud 7/24 Worker):**
+   - Bilgisayarınız kapalı olsa bile Render üzerinde 7/24 çalışır. Hem sabit hedefleri kollar hem de düzenli BIST analizleri paylaşır.
 
 ---
 
