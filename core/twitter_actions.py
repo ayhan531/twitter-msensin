@@ -38,25 +38,24 @@ class TwitterActions:
         Posts a new tweet with optional image/chart attachment without using Twitter API.
         """
         try:
-            print(f"[+] Tweet atılıyor: {text[:60]}...")
-            self.page.goto("https://x.com/compose/post", wait_until="domcontentloaded", timeout=25000)
+            print(f"[+] Tweet hazırlanıyor: {text[:60]}...")
+            self.page.goto("https://x.com/home", wait_until="domcontentloaded", timeout=25000)
             human_delay(2, 4)
 
-            # Wait for textarea (multiple fallback selectors)
-            textarea = None
-            selectors = [
-                "div[data-testid='tweetTextarea_0']",
-                "div[role='textbox'][aria-label*='Post text']",
-                "div[role='textbox'][aria-label*='Tweet text']",
-                "div[data-contents='true']"
-            ]
-            for sel in selectors:
-                loc = self.page.locator(sel).first
-                if loc.count() > 0:
-                    textarea = loc
-                    break
+            # Find visible compose textarea on home feed or compose modal
+            textarea = self.page.locator("div[data-testid='tweetTextarea_0']:visible").first
+            if textarea.count() == 0:
+                textarea = self.page.locator("div[role='textbox']:visible").first
 
-            if not textarea:
+            if textarea.count() == 0:
+                # Try opening compose post modal
+                self.page.goto("https://x.com/compose/post", wait_until="domcontentloaded", timeout=20000)
+                human_delay(2, 3)
+                textarea = self.page.locator("div[data-testid='tweetTextarea_0']:visible").first
+                if textarea.count() == 0:
+                    textarea = self.page.locator("div[role='textbox']:visible").first
+
+            if textarea.count() == 0:
                 return {"success": False, "error": "Tweet metin yazma alanı bulunamadı"}
 
             textarea.click()
@@ -73,15 +72,15 @@ class TwitterActions:
                 
                 if file_input.count() > 0:
                     file_input.set_input_files(media_path)
-                    human_delay(3, 5)  # Wait for upload to process
-                    print("[✓] Fotoğraf başarıyla yüklendi!")
+                    print("[+] Fotoğraf yüklendi, önizleme bekleniyor...")
+                    human_delay(3, 5)
                 else:
                     print("[!] Dosya yükleme inputu bulunamadı, metin olarak devam ediliyor.")
 
-            # Find Post button
-            post_button = self.page.locator("button[data-testid='tweetButton']").first
-            if not post_button.is_visible():
-                post_button = self.page.locator("button[data-testid='tweetButtonInline']").first
+            # Find visible Post button
+            post_button = self.page.locator("button[data-testid='tweetButtonInline']:visible").first
+            if post_button.count() == 0 or not post_button.is_visible():
+                post_button = self.page.locator("button[data-testid='tweetButton']:visible").first
 
             post_button.wait_for(state="visible", timeout=10000)
             
@@ -90,7 +89,7 @@ class TwitterActions:
                 return {"success": False, "error": "Tweet gönder butonu devre dışı (karakter sınırı veya boş metin)"}
 
             post_button.click()
-            print("[+] Gönder butonuna tıklandı, onay bekleniyor...")
+            print("[✓] Gönder butonuna tıklandı, tweet başarıyla paylaşıldı!")
             human_delay(3, 6)
 
             return {"success": True, "text": text, "has_media": bool(media_path)}
