@@ -553,6 +553,34 @@
                         </div>
                     </div>
 
+                    <!-- Render Asla Düşmeyen Kalıcı Koruma Kartı -->
+                    <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-indigo-950/30 border border-emerald-500/30 rounded-xl p-4 space-y-3 shadow-lg">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                    <i class="fa-solid fa-shield-halved text-base"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-sm text-white">7/24 Kesintisiz Bağlantı Koruması (Render)</h4>
+                                    <p class="text-[11px] text-slate-400">Render sunucusu yeniden başlasa veya uyusa bile hesaplar asla silinmez.</p>
+                                </div>
+                            </div>
+                            <div id="render-protection-badge">
+                                <span class="bg-emerald-950 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-check"></i> Koruma Hazır
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-800/80">
+                            <button onclick="openRenderBackupModal()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition shadow-md flex items-center gap-2">
+                                <i class="fa-solid fa-key"></i> 🔐 Render Kalıcı Kodunu Al (X_ACCOUNTS_DATA)
+                            </button>
+                            <button onclick="verifyAllSessions(this)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold px-3.5 py-2 rounded-lg transition flex items-center gap-2">
+                                <i class="fa-solid fa-arrows-rotate text-emerald-400"></i> Tüm Oturumları Canlı Tut
+                            </button>
+                        </div>
+                    </div>
+
                     <div id="accounts-table" class="space-y-2 max-h-[500px] overflow-y-auto pr-1">
                         <!-- Loaded dynamically -->
                     </div>
@@ -940,19 +968,25 @@
                             : '<span class="text-xs bg-rose-500/20 text-rose-400 px-2.5 py-1 rounded-full font-medium">Giriş Yok</span>';
                         
                         table.innerHTML += `
-                            <div data-username="${acc.username}" class="flex items-center justify-between p-3.5 bg-slate-800/70 border border-slate-700/80 rounded-xl">
+                            <div data-username="${acc.username}" class="flex items-center justify-between p-3.5 bg-slate-800/70 border border-slate-700/80 rounded-xl hover:border-slate-600 transition">
                                 <div class="flex items-center gap-3">
                                     <div class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white text-sm">
                                         @
                                     </div>
                                     <div>
-                                        <h4 class="font-bold text-white text-sm">@${acc.username}</h4>
+                                        <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                                            @${acc.username}
+                                            ${acc.role === 'analyst' ? '<span class="text-[10px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded font-medium">Analist</span>' : ''}
+                                        </h4>
                                         <span class="text-xs text-slate-400">Rol: ${acc.role}</span>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-2 sm:gap-3">
                                     ${statusBadge}
-                                    <button onclick="deleteAccount('${acc.username}')" class="text-slate-400 hover:text-rose-400 p-2 text-sm transition">
+                                    <button onclick="verifySession('${acc.username}', this)" title="Oturumu Doğrula ve Canlı Tut" class="text-slate-400 hover:text-emerald-400 p-2 text-sm transition rounded-lg hover:bg-slate-700/50">
+                                        <i class="fa-solid fa-arrows-rotate"></i>
+                                    </button>
+                                    <button onclick="deleteAccount('${acc.username}')" title="Hesabı Sil" class="text-slate-400 hover:text-rose-400 p-2 text-sm transition rounded-lg hover:bg-slate-700/50">
                                         <i class="fa-solid fa-trash-can"></i>
                                     </button>
                                 </div>
@@ -963,6 +997,9 @@
                         if (tgSelect) tgSelect.innerHTML += `<option value="${acc.username}">@${acc.username} (${acc.role})</option>`;
                     });
                 }
+
+                // Check Render permanent protection status
+                checkRenderProtectionStatus();
 
                 // Autopilot status
                 const ap = currentStatus.autopilot || {};
@@ -1840,6 +1877,164 @@
         // Initial Load
         loadAllData();
         setInterval(fetchStatus, 15000); // 15 sec periodic status sync
+
+        // ================= RENDER PERMANENT BACKUP & SESSION KEEP-ALIVE =================
+        async function openRenderBackupModal() {
+            try {
+                const res = await fetch('/api/accounts/render_backup_code');
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('render-backup-code-textarea').value = data.env_value;
+                    document.getElementById('backup-accounts-count').textContent = `${data.accounts_count} hesap hazır`;
+                    document.getElementById('render-backup-modal').classList.remove('hidden');
+                } else {
+                    showToast(data.error || "Yedek kodu alınamadı", true);
+                }
+            } catch (e) {
+                showToast("Yedek kodu alınırken hata: " + e, true);
+            }
+        }
+
+        function closeRenderBackupModal() {
+            document.getElementById('render-backup-modal').classList.add('hidden');
+        }
+
+        function copyRenderBackupCode() {
+            const val = document.getElementById('render-backup-code-textarea').value;
+            if (!val) return;
+            navigator.clipboard.writeText(val);
+            showToast("✅ X_ACCOUNTS_DATA değeri panoya kopyalandı!");
+        }
+
+        async function verifySession(username, btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-emerald-400"></i>';
+            btn.disabled = true;
+            try {
+                showToast(`@${username} oturumu doğrulanıyor ve canlı tutuluyor...`);
+                const res = await fetch('/api/accounts/verify_session', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username: username})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`✅ @${username} oturumu aktif ve canlı!`);
+                    fetchStatus();
+                } else {
+                    showToast(`⚠️ @${username} oturum uyarısı: ${data.error || 'Doğrulanamadı'}`, true);
+                }
+            } catch (e) {
+                showToast("Doğrulama hatası: " + e, true);
+            } finally {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        }
+
+        async function verifyAllSessions(btn) {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-emerald-400"></i> Doğrulanıyor...';
+            btn.disabled = true;
+            try {
+                showToast("Tüm bağlı hesapların oturumları canlı tutuluyor...");
+                if (!currentStatus || !currentStatus.accounts || currentStatus.accounts.length === 0) {
+                    showToast("Doğrulanacak bağlı hesap bulunamadı", true);
+                    return;
+                }
+                for (const acc of currentStatus.accounts) {
+                    await fetch('/api/accounts/verify_session', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({username: acc.username})
+                    });
+                }
+                showToast("✅ Tüm hesap oturumları tazelendi ve canlı tutuldu!");
+                fetchStatus();
+            } catch (e) {
+                showToast("Toplu doğrulama hatası: " + e, true);
+            } finally {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        }
+
+        async function checkRenderProtectionStatus() {
+            try {
+                const res = await fetch('/api/accounts/render_backup_code');
+                const data = await res.json();
+                const badgeEl = document.getElementById('render-protection-badge');
+                if (badgeEl) {
+                    if (data.has_env_configured || data.persistent_disk_detected) {
+                        badgeEl.innerHTML = `<span class="bg-emerald-950 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> ${data.persistent_disk_detected ? 'Kalıcı Disk Aktif' : 'X_ACCOUNTS_DATA Aktif'}</span>`;
+                    } else {
+                        badgeEl.innerHTML = `<span class="bg-amber-950 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> Yedek Alınması Önerilir</span>`;
+                    }
+                }
+            } catch (e) {}
+        }
     </script>
+
+    <!-- ================= RENDER PERMANENT BACKUP MODAL ================= -->
+    <div id="render-backup-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-emerald-400"></i> Render 7/24 Asla Düşmeyen Kalıcı Yedek
+                </h3>
+                <button onclick="closeRenderBackupModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="bg-emerald-950/40 border border-emerald-500/20 rounded-xl p-3.5 text-xs text-slate-300 space-y-2">
+                <p class="font-bold text-emerald-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-info"></i> Bu Kod Ne İşe Yarar?
+                </p>
+                <p class="text-[12px] leading-relaxed">
+                    Render ücretsiz ve standart servislerinde disk geçicidir (ephemeral). Sunucu her deploy edildiğinde, yeniden başlatıldığında veya uyku modundan çıktığında yeni eklediğiniz hesaplar silinebilir.
+                </p>
+                <p class="text-[12px] text-emerald-200 leading-relaxed font-semibold">
+                    Aşağıdaki tek satırlık kodu Render Dashboard'unuzda <b>Environment</b> değişkeni olarak kaydederseniz, hesaplarınız <u>asla düşmez</u> ve <u>sonsuza kadar korunur</u>!
+                </p>
+            </div>
+
+            <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold text-slate-300">Ortam Değişkeni Adı (Key):</label>
+                    <span class="text-[11px] text-slate-400 font-mono">Render Dashboard -> Environment</span>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
+                    <code class="text-xs text-amber-400 font-mono font-bold flex-1">X_ACCOUNTS_DATA</code>
+                    <button onclick="navigator.clipboard.writeText('X_ACCOUNTS_DATA'); showToast('Key kopyalandı: X_ACCOUNTS_DATA');" class="text-xs text-slate-300 hover:text-white bg-slate-700 px-2 py-1 rounded transition">Kopyala</button>
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold text-slate-300">Değer (Value - Tüm Hesaplarınız):</label>
+                    <span id="backup-accounts-count" class="text-[11px] text-emerald-400 font-semibold">0 hesap</span>
+                </div>
+                <textarea id="render-backup-code-textarea" readonly rows="4" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-slate-300 font-mono focus:outline-none"></textarea>
+            </div>
+
+            <div class="bg-slate-800/80 rounded-xl p-3 text-[11px] text-slate-400 space-y-1">
+                <p class="font-bold text-slate-200">🚀 Render'a Kaydetme Adımları (30 Saniye):</p>
+                <p>1. <a href="https://dashboard.render.com" target="_blank" class="text-emerald-400 underline">Render Dashboard</a>'a gidin ve <b>twitter-msensin</b> servisini açın.</p>
+                <p>2. Sol menüden <b>Environment</b> sekmesine tıklayın.</p>
+                <p>3. <b>Add Environment Variable</b> butonuna basın: Key kısmına <code class="text-amber-400">X_ACCOUNTS_DATA</code>, Value kısmına yukarıdaki kodu yapıştırın.</p>
+                <p>4. <b>Save Changes</b> butonuna tıklayın. Bitti!</p>
+            </div>
+
+            <div class="flex items-center gap-2 pt-2">
+                <button onclick="copyRenderBackupCode()" class="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2 text-xs">
+                    <i class="fa-regular fa-copy"></i> 📋 Değeri Kopyala (Value)
+                </button>
+                <button onclick="closeRenderBackupModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-4 py-2.5 rounded-xl transition">
+                    Kapat
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

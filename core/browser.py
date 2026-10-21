@@ -13,10 +13,19 @@ from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
 
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 
+def get_default_session_dir() -> Path:
+    """Detects persistent disk mount paths on Render or returns local sessions dir"""
+    for p in ["/var/data", "/data", os.getenv("RENDER_DISK_PATH", "")]:
+        if p and os.path.exists(p) and os.path.isdir(p):
+            p_dir = Path(p) / "x_bist_bot" / "sessions"
+            p_dir.mkdir(parents=True, exist_ok=True)
+            return p_dir
+    return Path(__file__).resolve().parent.parent / "sessions"
+
 class TwitterBrowserManager:
     def __init__(self, session_dir: Optional[str] = None):
         if session_dir is None:
-            self.session_dir = Path(__file__).resolve().parent.parent / "sessions"
+            self.session_dir = get_default_session_dir()
         else:
             self.session_dir = Path(session_dir)
         self.session_dir.mkdir(parents=True, exist_ok=True)
@@ -101,36 +110,73 @@ class TwitterBrowserManager:
 
         return context
 
-    def save_session(self, context: BrowserContext, account_name: str):
+    def save_session(self, context: BrowserContext, account_name: str) -> Dict[str, str]:
+        """Saves full browser storage state and extracts latest auth_token/ct0"""
         session_file = self.get_session_file(account_name)
         context.storage_state(path=str(session_file))
+        
+        # Extract latest tokens from storage state
+        latest_tokens = {"auth_token": "", "ct0": ""}
+        try:
+            cookies = context.cookies()
+            for c in cookies:
+                if c.get("name") == "auth_token" and c.get("value"):
+                    latest_tokens["auth_token"] = c["value"]
+                elif c.get("name") == "ct0" and c.get("value"):
+                    latest_tokens["ct0"] = c["value"]
+        except Exception:
+            pass
+        return latest_tokens
 
     def create_session_from_cookies(self, account_name: str, auth_token: str, ct0: Optional[str] = None):
         """
-        Allows instantly generating session file if user supplies auth_token from browser cookies!
+        Generates a robust, multi-domain session file compatible with both .x.com and .twitter.com.
+        Includes essential security cookies to prevent session invalidation by Twitter.
         """
-        cookies = [
-            {
+        token = auth_token.strip()
+        csrf = ct0.strip() if ct0 else ""
+        far_future_expiry = int(time.time()) + 315360000  # ~10 years
+        
+        # Domains Twitter expects
+        domains = [".x.com", ".twitter.com"]
+        cookies = []
+
+        for d in domains:
+            # Main Auth Token
+            cookies.append({
                 "name": "auth_token",
-                "value": auth_token.strip(),
-                "domain": ".x.com",
+                "value": token,
+                "domain": d,
                 "path": "/",
+                "expires": far_future_expiry,
                 "httpOnly": True,
                 "secure": True,
                 "sameSite": "None"
-            }
-        ]
-        if ct0:
+            })
+            # CSRF Token
+            if csrf:
+                cookies.append({
+                    "name": "ct0",
+                    "value": csrf,
+                    "domain": d,
+                    "path": "/",
+                    "expires": far_future_expiry,
+                    "httpOnly": False,
+                    "secure": True,
+                    "sameSite": "Lax"
+                })
+            # Essential Anti-Bot Fingerprint Cookies
             cookies.append({
-                "name": "ct0",
-                "value": ct0.strip(),
-                "domain": ".x.com",
+                "name": "night_mode",
+                "value": "2",
+                "domain": d,
                 "path": "/",
+                "expires": far_future_expiry,
                 "httpOnly": False,
-                "secure": True,
+                "secure": False,
                 "sameSite": "Lax"
             })
-            
+
         storage_data = {
             "cookies": cookies,
             "origins": []
@@ -139,6 +185,58 @@ class TwitterBrowserManager:
         with open(session_file, "w", encoding="utf-8") as f:
             json.dump(storage_data, f, indent=2)
         return session_file
+
+    def verify_and_refresh_session(self, account_name: str) -> Dict[str, Any]:
+        """
+        Validates whether the session for account_name is active on X (Twitter).
+        Refreshes ct0 token if rotated and updates stored session state.
+        Returns:
+            {"valid": bool, "username": str, "auth_token": str, "ct0": str, "error": Optional[str]}
+        """
+        self.start()
+        clean_name = account_name.strip().lstrip("@")
+        context = self.launch_context(clean_name, headless=True)
+        try:
+            page = context.new_page()
+            page.goto("https://x.com/home", wait_until="domcontentloaded", timeout=35000)
+            time.sleep(3)
+            cur_url = page.url
+            
+            # Check if redirected to login
+            if "login" in cur_url or "i/flow" in cur_url:
+                return {
+                    "valid": False, 
+                    "username": clean_name, 
+                    "error": "Oturum zaman aşımına uğramış veya geçersiz (Login sayfasına yönlendirildi)"
+                }
+            
+            # Check if home feed or nav elements are visible
+            logged_in = False
+            if "x.com/home" in cur_url or "twitter.com/home" in cur_url:
+                logged_in = True
+            elif page.locator("a[data-testid='AppTabBar_Home_Link'], div[data-testid='tweetTextarea_0']").count() > 0:
+                logged_in = True
+
+            if not logged_in:
+                return {"valid": False, "username": clean_name, "error": f"Bilinmeyen sayfa durumu: {cur_url}"}
+
+            # Save updated storage state with new ct0
+            latest = self.save_session(context, clean_name)
+            return {
+                "valid": True,
+                "username": clean_name,
+                "auth_token": latest.get("auth_token", ""),
+                "ct0": latest.get("ct0", ""),
+                "message": f"@{clean_name} oturumu aktif ve doğrulandı."
+            }
+        except Exception as e:
+            return {"valid": False, "username": clean_name, "error": str(e)}
+        finally:
+            try:
+                context.close()
+            except Exception:
+                pass
+            self.stop()
 
     def interactive_login(self, account_name: str = "") -> Dict[str, Any]:
         """

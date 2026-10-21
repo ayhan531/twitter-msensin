@@ -38,7 +38,24 @@ from core.twitter_actions import TwitterActions
 from core.watchlist_monitor import WatchlistMonitor
 from core.telegram_bridge import TelegramBridgeManager
 
-CONFIG_FILE = ROOT_DIR / "config" / "config.json"
+def get_config_file_path() -> Path:
+    """Detects persistent disk mount paths on Render or returns local config file"""
+    for p in ["/var/data", "/data", os.getenv("RENDER_DISK_PATH", "")]:
+        if p and os.path.exists(p) and os.path.isdir(p):
+            p_dir = Path(p) / "x_bist_bot" / "config"
+            p_dir.mkdir(parents=True, exist_ok=True)
+            target = p_dir / "config.json"
+            bundled = ROOT_DIR / "config" / "config.json"
+            if not target.exists() and bundled.exists():
+                import shutil
+                try:
+                    shutil.copy2(bundled, target)
+                except Exception:
+                    pass
+            return target
+    return ROOT_DIR / "config" / "config.json"
+
+CONFIG_FILE = get_config_file_path()
 STATIC_DIR = ROOT_DIR / "web" / "static"
 TEMPLATES_DIR = ROOT_DIR / "web" / "templates"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
@@ -112,27 +129,111 @@ DEFAULT_SCHEDULER = {
     "last_run_epoch": 0
 }
 
+def parse_env_accounts() -> List[Dict[str, Any]]:
+    """
+    Parses accounts from X_ACCOUNTS_DATA environment variable.
+    Supports JSON array, base64-encoded JSON, or username:token lines.
+    This guarantees zero session loss even if Render rebuilds/restarts containers.
+    """
+    raw = os.getenv("X_ACCOUNTS_DATA", "").strip()
+    if not raw:
+        return []
+    import base64
+    # Check if base64 encoded
+    try:
+        decoded = base64.b64decode(raw).decode("utf-8")
+        if decoded.startswith("[") or decoded.startswith("{"):
+            raw = decoded
+    except Exception:
+        pass
+    
+    # Try parsing JSON
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list):
+            return data
+        elif isinstance(data, dict) and "accounts" in data:
+            return data["accounts"]
+    except Exception:
+        pass
+    
+    # Try parsing lines (username:auth_token[:ct0[:role]])
+    parsed = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split(":")
+        if len(parts) >= 2:
+            uname = parts[0].strip().lstrip("@")
+            token = parts[1].strip()
+            ct0 = parts[2].strip() if len(parts) >= 3 else ""
+            role = parts[3].strip() if len(parts) >= 4 else "helper"
+            parsed.append({"username": uname, "auth_token": token, "ct0": ct0, "role": role})
+    return parsed
+
 def get_config() -> dict:
-    if not CONFIG_FILE.exists():
-        return {
+    global CONFIG_FILE
+    CONFIG_FILE = get_config_file_path()
+    
+    cfg = {}
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+        except Exception:
+            cfg = {}
+            
+    if not cfg:
+        cfg = {
             "accounts": [],
             "ai_settings": {},
             "autopilot": {"enabled": False, "interval_minutes": 60},
             "scheduler": DEFAULT_SCHEDULER
         }
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        cfg = json.load(f)
-        if "scheduler" not in cfg:
-            cfg["scheduler"] = DEFAULT_SCHEDULER
-        return cfg
+
+    if "scheduler" not in cfg:
+        cfg["scheduler"] = DEFAULT_SCHEDULER
+
+    # Merge persistent accounts from X_ACCOUNTS_DATA environment variable if present
+    env_accounts = parse_env_accounts()
+    if env_accounts:
+        existing_map = {a.get("username", "").lower(): a for a in cfg.get("accounts", [])}
+        changed = False
+        for ea in env_accounts:
+            u = ea.get("username", "").strip().lstrip("@")
+            if not u:
+                continue
+            u_lower = u.lower()
+            if u_lower not in existing_map:
+                cfg.setdefault("accounts", []).append(ea)
+                changed = True
+            else:
+                curr = existing_map[u_lower]
+                if ea.get("auth_token") and ea.get("auth_token") != curr.get("auth_token"):
+                    curr["auth_token"] = ea.get("auth_token")
+                    changed = True
+                if ea.get("ct0") and not curr.get("ct0"):
+                    curr["ct0"] = ea.get("ct0")
+                    changed = True
+        if changed:
+            try:
+                save_config(cfg)
+            except Exception:
+                pass
+
+    return cfg
 
 def save_config(cfg: dict):
+    global CONFIG_FILE
+    CONFIG_FILE = get_config_file_path()
+    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 def ensure_sessions_restored():
     """
-    Ensures session cookies on disk match accounts in config.json.
+    Ensures multi-domain session cookies on disk match accounts in config.json.
     Essential for Render container restarts where local storage is fresh.
     """
     cfg = get_config()
@@ -146,6 +247,69 @@ def ensure_sessions_restored():
 
 # Ensure sessions on boot
 ensure_sessions_restored()
+
+# ----------------- SESSION KEEP-ALIVE & AUTO-HEALER ENGINE -----------------
+keepalive_running = False
+keepalive_thread = None
+
+def session_keepalive_worker():
+    """
+    Background worker that runs every 25 minutes to keep sessions alive on Twitter,
+    prevent Render container sleep/drops, and automatically refresh ct0 CSRF tokens.
+    """
+    global keepalive_running
+    log_event("🛡️ Oturum Koruma Motoru (Keep-Alive) devrede: Hesaplar 7/24 canlı tutulacak.", "success")
+    
+    while keepalive_running:
+        try:
+            # Check every 25 minutes
+            for _ in range(25 * 60):
+                if not keepalive_running:
+                    return
+                time.sleep(1)
+                
+            cfg = get_config()
+            accounts = cfg.get("accounts", [])
+            if not accounts:
+                continue
+                
+            log_event("🔄 Hesap oturumları canlı tutuluyor ve çerezler kontrol ediliyor...", "info")
+            cfg_changed = False
+            
+            for acc in accounts:
+                uname = acc.get("username")
+                auth = acc.get("auth_token")
+                if not uname or not auth:
+                    continue
+                    
+                try:
+                    res = browser_mgr.verify_and_refresh_session(uname)
+                    if res.get("valid"):
+                        new_ct0 = res.get("ct0")
+                        if new_ct0 and new_ct0 != acc.get("ct0"):
+                            acc["ct0"] = new_ct0
+                            cfg_changed = True
+                        log_event(f"✅ @{uname} oturumu canlı ve aktif (Doğrulandı).", "info")
+                    else:
+                        log_event(f"⚠️ @{uname} oturumu tazeleniyor (Onarılıyor)...", "warning")
+                        browser_mgr.create_session_from_cookies(uname, auth, acc.get("ct0"))
+                except Exception:
+                    pass
+                    
+            if cfg_changed:
+                save_config(cfg)
+                
+        except Exception:
+            time.sleep(60)
+
+def start_keepalive_worker():
+    global keepalive_running, keepalive_thread
+    if not keepalive_running:
+        keepalive_running = True
+        keepalive_thread = threading.Thread(target=session_keepalive_worker, daemon=True)
+        keepalive_thread.start()
+
+start_keepalive_worker()
 
 def get_ai_generator() -> BISTContentGenerator:
     cfg = get_config()
@@ -802,6 +966,67 @@ async def bulk_import_accounts(payload: BulkImportPayload):
     save_config(cfg)
     log_event(f"Toplu içe aktarma tamamlandı: {imported_count} yeni hesap sisteme bağlandı!", "success")
     return {"success": True, "imported_count": imported_count, "total_accounts": len(accs)}
+
+@app.get("/api/accounts/render_backup_code")
+async def get_render_backup_code():
+    """
+    Returns the exact environment variable payload for Render.
+    Ensures accounts NEVER drop or disappear upon redeploy or sleep.
+    """
+    cfg = get_config()
+    accs = cfg.get("accounts", [])
+    clean_accs = []
+    for a in accs:
+        clean_accs.append({
+            "username": a.get("username"),
+            "role": a.get("role", "helper"),
+            "auth_token": a.get("auth_token", ""),
+            "ct0": a.get("ct0", "")
+        })
+    raw_json = json.dumps(clean_accs, separators=(',', ':'))
+    import base64
+    b64_val = base64.b64encode(raw_json.encode('utf-8')).decode('utf-8')
+    has_env = bool(os.getenv("X_ACCOUNTS_DATA"))
+    has_disk = any(os.path.exists(p) and os.path.isdir(p) for p in ["/var/data", "/data", os.getenv("RENDER_DISK_PATH", "")])
+    return {
+        "success": True,
+        "env_key": "X_ACCOUNTS_DATA",
+        "env_value": raw_json,
+        "env_value_base64": b64_val,
+        "accounts_count": len(clean_accs),
+        "has_env_configured": has_env,
+        "persistent_disk_detected": has_disk
+    }
+
+class VerifySessionPayload(BaseModel):
+    username: str
+
+@app.post("/api/accounts/verify_session")
+async def verify_account_session(payload: VerifySessionPayload):
+    """
+    Actively checks if account session is valid on X, refreshes ct0 token, and repairs session.
+    """
+    uname = payload.username.strip().lstrip("@")
+    cfg = get_config()
+    acc = next((a for a in cfg.get("accounts", []) if a.get("username").lower() == uname.lower()), None)
+    if not acc:
+        return JSONResponse({"success": False, "error": f"@{uname} sistemde kayıtlı değil."}, status_code=404)
+    
+    # Ensure session state exists on disk
+    if not browser_mgr.has_session(uname) and acc.get("auth_token"):
+        browser_mgr.create_session_from_cookies(uname, acc.get("auth_token"), acc.get("ct0"))
+        
+    res = await asyncio.to_thread(browser_mgr.verify_and_refresh_session, uname)
+    if res.get("valid"):
+        new_ct0 = res.get("ct0")
+        if new_ct0 and new_ct0 != acc.get("ct0"):
+            acc["ct0"] = new_ct0
+            save_config(cfg)
+        log_event(f"✅ @{uname} oturumu canlı ve aktif! (ct0 tazelendi)", "success")
+        return {"success": True, "valid": True, "message": f"@{uname} oturumu canlı ve doğrulandı!"}
+    else:
+        log_event(f"⚠️ @{uname} oturumu geçersiz görünüyor: {res.get('error')}", "warning")
+        return {"success": False, "valid": False, "error": res.get("error", "Doğrulanamadı")}
 
 # Watchlist Endpoints
 @app.get("/api/watchlist")

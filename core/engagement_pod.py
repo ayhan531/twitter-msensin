@@ -104,6 +104,7 @@ class EngagementPodManager:
             finally:
                 if context:
                     try:
+                        self.browser_mgr.save_session(context, acc)
                         context.close()
                     except Exception:
                         pass
@@ -187,6 +188,7 @@ class EngagementPodManager:
         finally:
             if context:
                 try:
+                    self.browser_mgr.save_session(context, poster_account)
                     context.close()
                 except Exception:
                     pass
