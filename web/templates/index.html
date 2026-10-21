@@ -99,7 +99,7 @@
                 <i class="fa-solid fa-users"></i> Hesaplar (<span id="tab-acc-count">0</span>)
             </button>
             <button onclick="toggleTab('autopilot')" id="tab-btn-autopilot" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
-                <i class="fa-solid fa-robot"></i> Otomatik Pilot
+                <i class="fa-solid fa-clock text-indigo-400"></i> Akıllı Zamanlayıcı
             </button>
             <button onclick="toggleTab('logs')" id="tab-btn-logs" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
                 <i class="fa-solid fa-terminal"></i> Loglar
@@ -557,39 +557,193 @@
             </div>
         </section>
 
-        <!-- ================= TAB 7: OTOMATİK PİLOT ================= -->
+        <!-- ================= TAB 7: AKILLI ZAMANLAYICI & OTOMATİK PİLOT ================= -->
         <section id="tab-autopilot" class="tab-content hidden space-y-6">
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl max-w-2xl space-y-6">
-                <div>
-                    <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                        <i class="fa-solid fa-robot text-emerald-400"></i> Otomatik Pilot (Background Worker)
-                    </h3>
-                    <p class="text-xs text-slate-400 mt-1">
-                        Açık bırakıldığında siz bilgisayarı kapatsanız dahi (Render Cloud üzerinde) belirlenen aralıklarla canlı BIST analizi paylaşır ve hesapların birbirini kasmasını sağlar.
-                    </p>
+            <div class="bg-gradient-to-br from-slate-900 to-indigo-950/30 border border-slate-800 p-6 rounded-2xl shadow-xl max-w-3xl space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div>
+                        <h3 class="font-bold text-xl text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clock text-indigo-400"></i> Akıllı Zamanlayıcı & BIST Otomatik Pilot
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Belirlediğiniz günlerde (örn: 2 günde bir, sadece hafta içi) ve seçtiğiniz saat/dakikalarda (örn: 09:45, 13:00, 18:15) otomatik analiz grafiği üretip paylaşır ve hesapları birbirine kastırır.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-xs text-slate-300 self-start sm:self-auto">
+                        <span>🇹🇷 Sistem Saati:</span>
+                        <span id="sched-current-time" class="font-bold text-emerald-400 font-mono">--:--</span>
+                    </div>
                 </div>
 
-                <div class="bg-slate-800/60 border border-slate-700/80 p-5 rounded-xl space-y-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <span class="font-bold text-sm text-white block">Otomatik Pilot Durumu</span>
-                            <span id="autopilot-status-badge" class="text-xs text-slate-400">Yükleniyor...</span>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="autopilot-toggle-switch" onchange="toggleAutopilotServer()" class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                <!-- Master Toggle -->
+                <div class="flex items-center justify-between p-4 bg-slate-800/60 border border-slate-700/80 rounded-xl">
+                    <div>
+                        <span class="font-bold text-sm text-white block">Zamanlayıcı Durumu</span>
+                        <span id="sched-status-badge" class="text-xs text-slate-400">Yükleniyor...</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="sched-enabled-switch" class="sr-only peer">
+                        <div class="w-12 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+
+                <!-- Mode Selector -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-2">Çalışma Prensibi:</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="flex items-center gap-3 p-3.5 bg-slate-800/70 border border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500 transition">
+                            <input type="radio" name="sched-mode" value="times" checked onchange="toggleSchedModeUI()" class="text-indigo-500 focus:ring-indigo-500">
+                            <div>
+                                <span class="text-xs font-bold text-white block">🕒 Günün Belirli Saatleri & Dakikaları</span>
+                                <span class="text-[11px] text-slate-400">Örn: 09:45 (Açılış), 13:00 (Öğle), 18:15 (Kapanış)</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3.5 bg-slate-800/70 border border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500 transition">
+                            <input type="radio" name="sched-mode" value="interval" onchange="toggleSchedModeUI()" class="text-indigo-500 focus:ring-indigo-500">
+                            <div>
+                                <span class="text-xs font-bold text-white block">⏱️ Dakika / Saat Aralığı ile</span>
+                                <span class="text-[11px] text-slate-400">Örn: Her 60 dakikada bir veya her 2 saatte bir</span>
+                            </div>
                         </label>
                     </div>
+                </div>
 
+                <!-- SECTION A: Belirli Saatler Modu -->
+                <div id="sched-times-panel" class="space-y-4 p-4 bg-slate-800/40 border border-slate-700/60 rounded-xl">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Paylaşım ve Kasma Sıklığı:</label>
-                        <select id="autopilot-interval-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <option value="30">Her 30 Dakikada Bir</option>
-                            <option value="60" selected>Her 60 Dakikada (1 Saat) Bir</option>
-                            <option value="120">Her 2 Saatte Bir</option>
-                            <option value="240">Her 4 Saatte Bir</option>
-                        </select>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-semibold text-slate-300">Paylaşım Yapılacak Saatler:</label>
+                            <span class="text-[11px] text-slate-400">Günde birden fazla saat ekleyebilirsiniz</span>
+                        </div>
+
+                        <!-- Active Times Chips List -->
+                        <div id="sched-times-chips" class="flex flex-wrap gap-2 mb-3 min-h-[38px] p-2 bg-slate-900 border border-slate-700 rounded-xl">
+                            <!-- Populated dynamically -->
+                        </div>
+
+                        <!-- Quick Add Buttons & Custom Time Input -->
+                        <div class="flex flex-wrap items-center gap-2 pt-1">
+                            <span class="text-xs text-slate-400">Hızlı Borsa Saatleri:</span>
+                            <button type="button" onclick="addQuickTime('09:45')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-emerald-400 font-mono transition">⚡ 09:45 (Seans Açılışı)</button>
+                            <button type="button" onclick="addQuickTime('13:00')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-sky-400 font-mono transition">⚡ 13:00 (Öğle Arası)</button>
+                            <button type="button" onclick="addQuickTime('18:10')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-amber-400 font-mono transition">⚡ 18:10 (Kapanış)</button>
+                            <button type="button" onclick="addQuickTime('21:00')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-purple-400 font-mono transition">⚡ 21:00 (Akşam Bülteni)</button>
+                        </div>
+
+                        <div class="flex items-center gap-2 mt-3">
+                            <input type="time" id="sched-custom-time-input" value="10:00" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono" />
+                            <button type="button" onclick="addCustomTimeFromInput()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-plus"></i> Saati Ekle
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- Frequency (Gün Seçimi) -->
+                    <div class="pt-3 border-t border-slate-700/60">
+                        <label class="block text-xs font-semibold text-slate-300 mb-2">Gün & Sıklık Tercihi:</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <label class="flex items-center gap-2 p-3 bg-slate-800/80 border border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500 transition">
+                                <input type="radio" name="sched-frequency" value="every_day" checked onchange="toggleFrequencyUI()" class="text-indigo-500 focus:ring-indigo-500">
+                                <div>
+                                    <span class="text-xs font-bold text-white block">📅 Her Gün</span>
+                                    <span class="text-[10px] text-slate-400">Pazartesi - Pazar kesintisiz</span>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 bg-slate-800/80 border border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500 transition">
+                                <input type="radio" name="sched-frequency" value="weekdays" onchange="toggleFrequencyUI()" class="text-indigo-500 focus:ring-indigo-500">
+                                <div>
+                                    <span class="text-xs font-bold text-white block">🏛️ Sadece Hafta İçi</span>
+                                    <span class="text-[10px] text-slate-400">Pzt - Cuma (Seans Günleri)</span>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-2 p-3 bg-slate-800/80 border border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500 transition">
+                                <input type="radio" name="sched-frequency" value="every_x_days" onchange="toggleFrequencyUI()" class="text-indigo-500 focus:ring-indigo-500">
+                                <div>
+                                    <span class="text-xs font-bold text-white block">🔁 X Günde Bir</span>
+                                    <span class="text-[10px] text-slate-400">2 günde bir, 3 günde bir...</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Every X Days Input Container -->
+                        <div id="sched-every-x-days-container" class="hidden mt-3 p-3 bg-slate-900 border border-slate-700 rounded-xl flex items-center gap-3">
+                            <span class="text-xs text-slate-300">Kaç günde bir paylaşım yapılsın?</span>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="sched-every-x-days-val" min="1" max="30" value="2" class="w-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white text-center font-bold focus:outline-none focus:border-indigo-500" />
+                                <span class="text-xs text-slate-400 font-semibold">Günde Bir</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION B: Aralık Modu (Interval) -->
+                <div id="sched-interval-panel" class="hidden space-y-3 p-4 bg-slate-800/40 border border-slate-700/60 rounded-xl">
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Paylaşım Sıklığı Aralığı:</label>
+                    <select id="sched-interval-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <option value="30">Her 30 Dakikada Bir</option>
+                        <option value="60" selected>Her 60 Dakikada (1 Saat) Bir</option>
+                        <option value="120">Her 2 Saatte Bir</option>
+                        <option value="240">Her 4 Saatte Bir</option>
+                        <option value="480">Her 8 Saatte Bir</option>
+                        <option value="1440">Her 24 Saatte (Günde 1 Kez) Bir</option>
+                    </select>
+                </div>
+
+                <!-- Content & Automation Options -->
+                <div class="space-y-3 pt-2 border-t border-slate-800">
+                    <div class="flex items-center justify-between p-3 bg-slate-800/60 border border-slate-700/80 rounded-xl">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="sched-attach-chart" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-indigo-500">
+                            <label for="sched-attach-chart" class="text-xs text-slate-300 cursor-pointer font-medium">
+                                📸 <b>TradingView Pro Japon Mum Grafiğini Otomatik Çizip Tweet'e Ekle</b>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 bg-slate-800/60 border border-slate-700/80 rounded-xl">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="sched-auto-boost" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-indigo-500">
+                            <label for="sched-auto-boost" class="text-xs text-slate-300 cursor-pointer font-medium">
+                                🚀 <b>Paylaşım Sonrası Bağlı Diğer Hesaplarla Otomatik RT, Beğeni ve Yorum Yap (Cross-Boost)</b>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Hisse Seçimi:</label>
+                            <select id="sched-stock-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                <option value="auto_rotate" selected>🔄 BIST 100 Hisseleri Dönüşümlü (THYAO, ASELS, EREGL...)</option>
+                                <option value="THYAO">Sabit THYAO</option>
+                                <option value="ASELS">Sabit ASELS</option>
+                                <option value="EREGL">Sabit EREGL</option>
+                                <option value="TUPRS">Sabit TUPRS</option>
+                                <option value="AKBNK">Sabit AKBNK</option>
+                                <option value="BIMAS">Sabit BIMAS</option>
+                                <option value="XU100">Sabit BIST 100 Endeksi</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Analiz Karakteri (Persona):</label>
+                            <select id="sched-persona-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                                <option value="rotate" selected>🎭 4 Karakter Dönüşümlü (Agresif, Temkinli, Sevecen, Analist)</option>
+                                <option value="kurumsal_analist">🧐 Kurumsal / Teknik Analist</option>
+                                <option value="agresif_trader">⚡ Agresif Day Trader</option>
+                                <option value="temkinli_yatirimci">🛡️ Temkinli Yatırımcı</option>
+                                <option value="sevecen_dost">🤗 Sevecen Borsa Dostu</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="saveSchedulerSettings()" class="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Zamanlayıcı Ayarlarını Kaydet & Aktifleştir
+                    </button>
+                    <button type="button" onclick="triggerSchedulerNow()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold px-5 py-3.5 rounded-xl border border-slate-700 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bolt"></i> ⚡ Şimdi Test Et & Paylaş
+                    </button>
                 </div>
             </div>
         </section>
@@ -656,6 +810,7 @@
             if (tabName === 'charts') loadChartAnalysis();
             if (tabName === 'watchlist') fetchWatchlist();
             if (tabName === 'comments') fetchCommentSettings();
+            if (tabName === 'autopilot') fetchSchedulerSettings();
             if (tabName === 'logs') fetchLogs();
         }
 
@@ -983,19 +1138,180 @@
             }
         }
 
-        async function toggleAutopilotServer() {
-            const enabled = document.getElementById('autopilot-toggle-switch').checked;
-            const interval = parseInt(document.getElementById('autopilot-interval-select').value, 10);
-            
-            const res = await fetch('/api/autopilot/toggle', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({enabled, interval_minutes: interval})
+        let activeScheduledTimes = ["09:45", "13:00", "18:15"];
+
+        function toggleSchedModeUI() {
+            let mode = 'times';
+            document.getElementsByName('sched-mode').forEach(r => { if (r.checked) mode = r.value; });
+            const timesPanel = document.getElementById('sched-times-panel');
+            const intervalPanel = document.getElementById('sched-interval-panel');
+            if (mode === 'times') {
+                timesPanel.classList.remove('hidden');
+                intervalPanel.classList.add('hidden');
+            } else {
+                timesPanel.classList.add('hidden');
+                intervalPanel.classList.remove('hidden');
+            }
+        }
+
+        function toggleFrequencyUI() {
+            let freq = 'every_day';
+            document.getElementsByName('sched-frequency').forEach(r => { if (r.checked) freq = r.value; });
+            const xDaysContainer = document.getElementById('sched-every-x-days-container');
+            if (freq === 'every_x_days') {
+                xDaysContainer.classList.remove('hidden');
+            } else {
+                xDaysContainer.classList.add('hidden');
+            }
+        }
+
+        function renderTimeChips() {
+            const container = document.getElementById('sched-times-chips');
+            container.innerHTML = '';
+            if (activeScheduledTimes.length === 0) {
+                container.innerHTML = '<span class="text-xs text-slate-500 py-1">Henüz saat eklenmedi. Aşağıdaki butonlardan ekleyin.</span>';
+                return;
+            }
+            activeScheduledTimes.sort().forEach(t => {
+                const chip = document.createElement('span');
+                chip.className = 'inline-flex items-center gap-1.5 bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 px-3 py-1 rounded-lg text-xs font-mono font-bold';
+                chip.innerHTML = `${t} <button type="button" onclick="removeTime('${t}')" class="text-indigo-400 hover:text-rose-400 font-bold ml-1 text-sm">&times;</button>`;
+                container.appendChild(chip);
             });
-            const data = await res.json();
-            if (data.success) {
-                showToast(enabled ? "Otomatik Pilot Başlatıldı" : "Otomatik Pilot Durduruldu");
-                fetchStatus();
+        }
+
+        function addQuickTime(timeStr) {
+            if (!activeScheduledTimes.includes(timeStr)) {
+                activeScheduledTimes.push(timeStr);
+                renderTimeChips();
+                showToast(`Saat ${timeStr} eklendi.`);
+            }
+        }
+
+        function addCustomTimeFromInput() {
+            const val = document.getElementById('sched-custom-time-input').value;
+            if (val && !activeScheduledTimes.includes(val)) {
+                activeScheduledTimes.push(val);
+                renderTimeChips();
+                showToast(`Saat ${val} eklendi.`);
+            }
+        }
+
+        function removeTime(timeStr) {
+            activeScheduledTimes = activeScheduledTimes.filter(t => t !== timeStr);
+            renderTimeChips();
+        }
+
+        async function fetchSchedulerSettings() {
+            try {
+                const res = await fetch('/api/scheduler');
+                const data = await res.json();
+                const sched = data.scheduler || {};
+                
+                document.getElementById('sched-current-time').textContent = data.current_time_tr || '--:--';
+                document.getElementById('sched-enabled-switch').checked = !!sched.enabled;
+
+                const badge = document.getElementById('sched-status-badge');
+                if (sched.enabled) {
+                    badge.innerHTML = '<span class="text-emerald-400 font-bold">● Aktif Çalışıyor</span>';
+                } else {
+                    badge.innerHTML = '<span class="text-slate-400">Durduruldu</span>';
+                }
+
+                // Mode
+                document.getElementsByName('sched-mode').forEach(r => {
+                    r.checked = (r.value === (sched.mode || 'times'));
+                });
+                toggleSchedModeUI();
+
+                // Times
+                activeScheduledTimes = (sched.times && sched.times.length) ? sched.times : ["09:45", "13:00", "18:15"];
+                renderTimeChips();
+
+                // Frequency
+                document.getElementsByName('sched-frequency').forEach(r => {
+                    r.checked = (r.value === (sched.frequency || 'every_day'));
+                });
+                document.getElementById('sched-every-x-days-val').value = sched.every_x_days || 2;
+                toggleFrequencyUI();
+
+                // Interval
+                document.getElementById('sched-interval-select').value = sched.interval_minutes || 60;
+
+                // Checkboxes & Selects
+                document.getElementById('sched-attach-chart').checked = sched.attach_chart !== false;
+                document.getElementById('sched-auto-boost').checked = sched.auto_boost !== false;
+                document.getElementById('sched-stock-select').value = sched.stock_symbol || 'auto_rotate';
+                document.getElementById('sched-persona-select').value = sched.persona || 'rotate';
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function saveSchedulerSettings() {
+            let mode = 'times';
+            document.getElementsByName('sched-mode').forEach(r => { if (r.checked) mode = r.value; });
+
+            let freq = 'every_day';
+            document.getElementsByName('sched-frequency').forEach(r => { if (r.checked) freq = r.value; });
+
+            const enabled = document.getElementById('sched-enabled-switch').checked;
+            const xDays = parseInt(document.getElementById('sched-every-x-days-val').value, 10) || 2;
+            const intervalMins = parseInt(document.getElementById('sched-interval-select').value, 10) || 60;
+            const attachChart = document.getElementById('sched-attach-chart').checked;
+            const autoBoost = document.getElementById('sched-auto-boost').checked;
+            const stockSymbol = document.getElementById('sched-stock-select').value;
+            const persona = document.getElementById('sched-persona-select').value;
+
+            if (mode === 'times' && activeScheduledTimes.length === 0) {
+                showToast("Lütfen en az bir saat ekleyin!", true);
+                return;
+            }
+
+            showToast("Zamanlayıcı ayarları kaydediliyor...");
+            try {
+                const res = await fetch('/api/scheduler/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        enabled: enabled,
+                        mode: mode,
+                        times: activeScheduledTimes,
+                        frequency: freq,
+                        every_x_days: xDays,
+                        interval_minutes: intervalMins,
+                        attach_chart: attachChart,
+                        auto_boost: autoBoost,
+                        persona: persona,
+                        stock_symbol: stockSymbol
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(enabled ? "⏰ Akıllı Zamanlayıcı Başarıyla Aktifleştirildi!" : "Zamanlayıcı Durduruldu");
+                    fetchSchedulerSettings();
+                    fetchStatus();
+                } else {
+                    showToast(data.error || "Hata oluştu", true);
+                }
+            } catch (e) {
+                showToast("Zamanlayıcı kaydedilemedi", true);
+            }
+        }
+
+        async function triggerSchedulerNow() {
+            if (!confirm("Beklemeden hemen şimdi otomatik bir BIST mum grafiği ve analizi üretilip paylaşılsın mı?")) return;
+            showToast("⚡ Otomatik analiz görevi başlatıldı! Arka planda paylaşılıyor ve kasılıyor...");
+            try {
+                const res = await fetch('/api/scheduler/trigger_now', {method: 'POST'});
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                } else {
+                    showToast(data.error || "Hata", true);
+                }
+            } catch (e) {
+                showToast("Tetikleme başarısız", true);
             }
         }
 

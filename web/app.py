@@ -9,6 +9,7 @@ import json
 import time
 import asyncio
 import threading
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
@@ -18,6 +19,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+# Turkey Timezone (UTC+3, constant year-round)
+TURKEY_TZ = timezone(timedelta(hours=3))
 
 # Ensure root directory is in sys.path
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -67,6 +71,13 @@ def get_watchlist_monitor() -> WatchlistMonitor:
         watchlist_monitor = WatchlistMonitor(browser_mgr, ai_gen)
     return watchlist_monitor
 
+# Ensure UTF-8 output encoding across all platforms
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 # Global Activity Logs (in-memory circular buffer)
 activity_logs = []
 
@@ -76,19 +87,63 @@ def log_event(message: str, level: str = "info"):
     activity_logs.insert(0, entry)
     if len(activity_logs) > 100:
         activity_logs.pop()
-    print(f"[{timestamp}] [{level.upper()}] {message}")
+    try:
+        print(f"[{timestamp}] [{level.upper()}] {message}")
+    except Exception:
+        safe_msg = message.encode("ascii", errors="replace").decode("ascii")
+        print(f"[{timestamp}] [{level.upper()}] {safe_msg}")
 
 log_event("Sistem başlatıldı, servisler hazır.")
 
+# Default Configuration for Smart Scheduler
+DEFAULT_SCHEDULER = {
+    "enabled": False,
+    "mode": "times",  # "times" (belirli saatler) or "interval" (dakika aralığı)
+    "times": ["09:45", "13:00", "18:15"],
+    "frequency": "every_day",  # "every_day", "weekdays", "every_x_days"
+    "every_x_days": 2,
+    "interval_minutes": 60,
+    "attach_chart": True,
+    "auto_boost": True,
+    "persona": "rotate",  # "rotate" or specific persona
+    "stock_symbol": "auto_rotate",  # "auto_rotate" or specific symbol
+    "last_run_epoch": 0
+}
+
 def get_config() -> dict:
     if not CONFIG_FILE.exists():
-        return {"accounts": [], "ai_settings": {}, "autopilot": {"enabled": False, "interval_minutes": 60}}
+        return {
+            "accounts": [],
+            "ai_settings": {},
+            "autopilot": {"enabled": False, "interval_minutes": 60},
+            "scheduler": DEFAULT_SCHEDULER
+        }
     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        cfg = json.load(f)
+        if "scheduler" not in cfg:
+            cfg["scheduler"] = DEFAULT_SCHEDULER
+        return cfg
 
 def save_config(cfg: dict):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+def ensure_sessions_restored():
+    """
+    Ensures session cookies on disk match accounts in config.json.
+    Essential for Render container restarts where local storage is fresh.
+    """
+    cfg = get_config()
+    for a in cfg.get("accounts", []):
+        u = a.get("username")
+        token = a.get("auth_token")
+        ct0 = a.get("ct0")
+        if u and token and not browser_mgr.has_session(u):
+            browser_mgr.create_session_from_cookies(u, token, ct0)
+            log_event(f"Oturum çerezleri otomatik oluşturuldu: @{u}", "success")
+
+# Ensure sessions on boot
+ensure_sessions_restored()
 
 def get_ai_generator() -> BISTContentGenerator:
     cfg = get_config()
@@ -98,60 +153,162 @@ def get_ai_generator() -> BISTContentGenerator:
     groq_key = ai_settings.get("groq_api_key") or os.getenv("GROQ_API_KEY")
     return BISTContentGenerator(provider=provider, api_key=gemini_key or groq_key)
 
-# Autopilot Background Worker
-autopilot_thread = None
-autopilot_running = False
+# ----------------- ADVANCED SCHEDULER & AUTOPILOT ENGINE -----------------
 
-def autopilot_worker():
-    global autopilot_running
-    log_event("Otomatik Pilot iş parçacığı aktif.", "success")
-    while autopilot_running:
+POPULAR_STOCKS = ["THYAO", "ASELS", "EREGL", "TUPRS", "AKBNK", "BIMAS", "XU100", "SASA"]
+PERSONAS = ["kurumsal_analist", "agresif_trader", "temkinli_yatirimci", "sevecen_dost"]
+rotation_counter = 0
+
+def execute_scheduled_task(source: str = "Zamanlayıcı") -> dict:
+    """
+    Executes automated chart generation, AI analysis, tweet posting and cross-boosting.
+    """
+    global rotation_counter
+    ensure_sessions_restored()
+    cfg = get_config()
+    accounts = cfg.get("accounts", [])
+    if not accounts:
+        log_event(f"[{source}] Paylaşım yapacak hesap bulunamadı.", "warning")
+        return {"success": False, "error": "Hesap bulunamadı"}
+
+    sched = cfg.get("scheduler", DEFAULT_SCHEDULER)
+    analyst = next((a.get("username") for a in accounts if a.get("role") == "analyst"), accounts[0].get("username"))
+    helpers = [a.get("username") for a in accounts if a.get("username") != analyst and browser_mgr.has_session(a.get("username"))]
+
+    if not browser_mgr.has_session(analyst):
+        log_event(f"[{source}] @{analyst} için oturum hazır değil.", "error")
+        return {"success": False, "error": f"@{analyst} için oturum hazır değil"}
+
+    # 1. Select Stock Symbol
+    stock_sym = sched.get("stock_symbol", "auto_rotate")
+    if stock_sym == "auto_rotate" or not stock_sym:
+        stock_sym = POPULAR_STOCKS[rotation_counter % len(POPULAR_STOCKS)]
+
+    # 2. Select Persona
+    persona_key = sched.get("persona", "rotate")
+    if persona_key == "rotate" or not persona_key:
+        persona_key = PERSONAS[rotation_counter % len(PERSONAS)]
+
+    rotation_counter += 1
+
+    # 3. Generate Chart Image
+    attach_chart = sched.get("attach_chart", True)
+    media_path = None
+    chart_url = chart_service.generate_chart_image(stock_sym)
+    if attach_chart and chart_url:
+        filename = os.path.basename(chart_url.split("?")[0])
+        media_path = str(STATIC_DIR / "charts" / filename)
+
+    # 4. Generate AI Analysis Tweet strictly synchronized with chart
+    analysis = chart_service.analyze_symbol(stock_sym)
+    ai_gen = get_ai_generator()
+    tweet_text = ai_gen.generate_chart_tweet(analysis, persona_key=persona_key)
+
+    log_event(f"⏰ [{source}] @{analyst} hesabıyla {stock_sym} analizi paylaşılıyor (Karakter: {persona_key})...", "info")
+
+    # 5. Post & Cross-Boost
+    auto_boost = sched.get("auto_boost", True)
+    pod_mgr = EngagementPodManager(browser_mgr, ai_gen)
+    if auto_boost and helpers:
+        res = pod_mgr.post_and_cross_boost(analyst, helpers, custom_tweet=tweet_text, media_path=media_path, headless=True)
+        log_event(f"✅ [{source}] Tweet paylaşıldı ve {len(helpers)} hesapla karşılıklı kasıldı!", "success")
+    else:
+        ctx = browser_mgr.launch_context(analyst, headless=True)
         try:
-            cfg = get_config()
-            interval = cfg.get("autopilot", {}).get("interval_minutes", 60) * 60
-            accounts = cfg.get("accounts", [])
-            watchlist = cfg.get("watchlist", [])
-            
-            # 1. Sabit İzleme Listesindeki (Watchlist) Hesapları Kontrol Et ve Kas
-            if watchlist and accounts:
-                helpers = [a.get("username") for a in accounts if browser_mgr.has_session(a.get("username"))]
-                if helpers:
-                    monitor = get_watchlist_monitor()
-                    for target in watchlist:
-                        target_user = target.get("username") if isinstance(target, dict) else str(target)
-                        log_event(f"Sabit hedef taranıyor: @{target_user}...", "info")
-                        res = monitor.check_and_engage_target(
-                            target_username=target_user,
-                            helper_accounts=helpers,
-                            do_like=True,
-                            do_retweet=True,
-                            do_comment=True,
-                            headless=True
-                        )
-                        if res and res.get("status") == "boosted":
-                            log_event(f"@{target_user} için yeni tweet kasıldı: {res.get('url')}", "success")
+            page = ctx.new_page()
+            actions = TwitterActions(page)
+            res = actions.post_tweet(tweet_text, media_path=media_path)
+            if res.get("success"):
+                log_event(f"✅ [{source}] Tweet başarıyla paylaşıldı!", "success")
+        finally:
+            ctx.close()
 
-            # 2. Ana Analist Hesabı ile Canlı BIST Tweeti Paylaş ve Kas
-            if accounts and any(browser_mgr.has_session(a.get("username", "")) for a in accounts):
-                analyst = next((a.get("username") for a in accounts if a.get("role") == "analyst"), accounts[0].get("username"))
-                helpers = [a.get("username") for a in accounts if a.get("username") != analyst and browser_mgr.has_session(a.get("username"))]
+    # 6. Check Watchlist Targets
+    watchlist = cfg.get("watchlist", [])
+    if watchlist and helpers:
+        monitor = get_watchlist_monitor()
+        for target in watchlist:
+            target_user = target.get("username") if isinstance(target, dict) else str(target)
+            monitor.check_and_engage_target(target_user, helpers, headless=True)
 
-                log_event(f"Otomatik Pilot döngüsü: @{analyst} analiz paylaşacak...", "info")
-                ai_gen = get_ai_generator()
-                pod_mgr = EngagementPodManager(browser_mgr, ai_gen)
-                pod_mgr.post_and_cross_boost(analyst, helpers, headless=True)
-                log_event(f"Otomatik Pilot döngüsü tamamlandı. Sonraki döngü: {interval // 60} dakika sonra.", "success")
-            else:
-                log_event("Otomatik Pilot: Aktif oturumlu hesap bulunamadı, bekleniyor...", "warning")
+    # Update last run
+    sched["last_run_epoch"] = time.time()
+    sched["last_run_str"] = datetime.now(TURKEY_TZ).strftime("%Y-%m-%d %H:%M")
+    cfg["scheduler"] = sched
+    save_config(cfg)
 
-            # Sleep in small slices to allow rapid cancellation
-            for _ in range(int(interval // 5)):
-                if not autopilot_running:
-                    break
-                time.sleep(5)
+    return {"success": True, "tweet": tweet_text, "stock": stock_sym, "persona": persona_key}
+
+scheduler_thread = None
+scheduler_running = False
+
+def scheduler_worker():
+    global scheduler_running
+    log_event("⏰ Akıllı Zamanlayıcı (Scheduler) arka plan iş parçacığı aktif.", "success")
+    last_executed_minute = ""
+
+    while scheduler_running:
+        try:
+            now_tr = datetime.now(TURKEY_TZ)
+            current_minute_str = now_tr.strftime("%Y-%m-%d %H:%M")
+            current_time_str = now_tr.strftime("%H:%M")
+
+            if current_minute_str != last_executed_minute:
+                cfg = get_config()
+                sched = cfg.get("scheduler", DEFAULT_SCHEDULER)
+
+                if sched.get("enabled", False):
+                    mode = sched.get("mode", "times")
+                    freq = sched.get("frequency", "every_day")
+
+                    # Check Day qualification
+                    is_day_qualified = False
+                    if freq == "every_day":
+                        is_day_qualified = True
+                    elif freq == "weekdays":
+                        is_day_qualified = now_tr.weekday() < 5  # Mon-Fri
+                    elif freq == "every_x_days":
+                        interval_days = max(1, int(sched.get("every_x_days", 2)))
+                        is_day_qualified = (now_tr.date().toordinal() % interval_days) == 0
+
+                    if is_day_qualified:
+                        if mode == "times":
+                            scheduled_times = sched.get("times", ["09:45", "13:00", "18:15"])
+                            if current_time_str in scheduled_times:
+                                last_executed_minute = current_minute_str
+                                log_event(f"⏰ Planlanan Saat Geldi ({current_time_str})! Otomatik tweet ve kasma başlıyor...", "info")
+                                execute_scheduled_task(source=f"Zamanlayıcı ({current_time_str})")
+                        elif mode == "interval":
+                            interval_mins = max(10, int(sched.get("interval_minutes", 60)))
+                            last_run = sched.get("last_run_epoch", 0)
+                            if (time.time() - last_run) >= (interval_mins * 60):
+                                last_executed_minute = current_minute_str
+                                log_event(f"⏰ Aralıklı Görev Süresi Doldu ({interval_mins} dk)! Paylaşılıyor...", "info")
+                                execute_scheduled_task(source=f"Aralıklı Pilot ({interval_mins} dk)")
+
+            time.sleep(15)  # Check every 15 seconds
         except Exception as e:
-            log_event(f"Otomatik Pilot hatası: {e}", "error")
-            time.sleep(60)
+            log_event(f"Zamanlayıcı döngü hatası: {e}", "error")
+            time.sleep(30)
+
+def start_scheduler_worker():
+    global scheduler_thread, scheduler_running
+    if not scheduler_running:
+        scheduler_running = True
+        scheduler_thread = threading.Thread(target=scheduler_worker, daemon=True)
+        scheduler_thread.start()
+
+def stop_scheduler_worker():
+    global scheduler_running
+    scheduler_running = False
+
+# Auto-start scheduler if enabled on server boot
+@app.on_event("startup")
+async def startup_event():
+    ensure_sessions_restored()
+    cfg = get_config()
+    if cfg.get("scheduler", {}).get("enabled", False):
+        start_scheduler_worker()
 
 # ----------------- ROUTES -----------------
 
@@ -161,6 +318,7 @@ async def serve_dashboard(request: Request):
 
 @app.get("/api/status")
 async def get_system_status():
+    ensure_sessions_restored()
     cfg = get_config()
     accounts = cfg.get("accounts", [])
     account_status = []
@@ -174,13 +332,81 @@ async def get_system_status():
             "has_token": bool(a.get("auth_token"))
         })
 
+    now_tr = datetime.now(TURKEY_TZ)
     return {
         "accounts": account_status,
         "autopilot": cfg.get("autopilot", {"enabled": False, "interval_minutes": 60}),
+        "scheduler": cfg.get("scheduler", DEFAULT_SCHEDULER),
+        "scheduler_running": scheduler_running,
+        "current_time_tr": now_tr.strftime("%H:%M"),
+        "current_date_tr": now_tr.strftime("%Y-%m-%d"),
         "ai_settings": cfg.get("ai_settings", {}),
         "total_accounts": len(accounts),
         "active_sessions": sum(1 for a in account_status if a["connected"])
     }
+
+@app.get("/api/scheduler")
+async def get_scheduler_endpoint():
+    cfg = get_config()
+    now_tr = datetime.now(TURKEY_TZ)
+    return {
+        "scheduler": cfg.get("scheduler", DEFAULT_SCHEDULER),
+        "scheduler_running": scheduler_running,
+        "current_time_tr": now_tr.strftime("%H:%M"),
+        "current_date_tr": now_tr.strftime("%Y-%m-%d")
+    }
+
+class SchedulerSavePayload(BaseModel):
+    enabled: bool
+    mode: str = "times"  # "times" or "interval"
+    times: List[str] = ["09:45", "13:00", "18:15"]
+    frequency: str = "every_day"  # "every_day", "weekdays", "every_x_days"
+    every_x_days: int = 2
+    interval_minutes: int = 60
+    attach_chart: bool = True
+    auto_boost: bool = True
+    persona: str = "rotate"
+    stock_symbol: str = "auto_rotate"
+
+@app.post("/api/scheduler/save")
+async def save_scheduler_endpoint(payload: SchedulerSavePayload):
+    cfg = get_config()
+    sched = {
+        "enabled": payload.enabled,
+        "mode": payload.mode,
+        "times": [t.strip() for t in payload.times if t.strip()],
+        "frequency": payload.frequency,
+        "every_x_days": max(1, payload.every_x_days),
+        "interval_minutes": max(10, payload.interval_minutes),
+        "attach_chart": payload.attach_chart,
+        "auto_boost": payload.auto_boost,
+        "persona": payload.persona,
+        "stock_symbol": payload.stock_symbol,
+        "last_run_epoch": cfg.get("scheduler", {}).get("last_run_epoch", 0),
+        "last_run_str": cfg.get("scheduler", {}).get("last_run_str", "")
+    }
+    cfg["scheduler"] = sched
+    cfg["autopilot"] = {
+        "enabled": payload.enabled,
+        "interval_minutes": payload.interval_minutes
+    }
+    save_config(cfg)
+
+    if payload.enabled:
+        start_scheduler_worker()
+        log_event(f"⏰ Akıllı Zamanlayıcı AÇILDI ({payload.mode} modu, {payload.frequency})", "success")
+    else:
+        stop_scheduler_worker()
+        log_event("⏰ Akıllı Zamanlayıcı KAPATILDI", "warning")
+
+    return {"success": True, "scheduler": sched, "scheduler_running": scheduler_running}
+
+@app.post("/api/scheduler/trigger_now")
+async def trigger_scheduler_now(background_tasks: BackgroundTasks):
+    ensure_sessions_restored()
+    log_event("⚡ Manuel tetikleme alındı: Otomatik BIST analizi ve kasma başlatılıyor...", "info")
+    background_tasks.add_task(execute_scheduled_task, "Manuel Tetikleme")
+    return {"success": True, "message": "Zamanlanmış analiz görevi hemen başlatıldı!"}
 
 class AddAccountPayload(BaseModel):
     username: str
