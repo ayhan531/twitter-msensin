@@ -101,6 +101,9 @@
             <button onclick="toggleTab('autopilot')" id="tab-btn-autopilot" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
                 <i class="fa-solid fa-clock text-indigo-400"></i> Akıllı Zamanlayıcı
             </button>
+            <button onclick="toggleTab('telegram')" id="tab-btn-telegram" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-brands fa-telegram text-sky-400"></i> Telegram Köprüsü
+            </button>
             <button onclick="toggleTab('logs')" id="tab-btn-logs" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
                 <i class="fa-solid fa-terminal"></i> Loglar
             </button>
@@ -691,13 +694,13 @@
 
                 <!-- Content & Automation Options -->
                 <div class="space-y-3 pt-2 border-t border-slate-800">
-                    <div class="flex items-center justify-between p-3 bg-slate-800/60 border border-slate-700/80 rounded-xl">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="sched-attach-chart" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-indigo-500">
-                            <label for="sched-attach-chart" class="text-xs text-slate-300 cursor-pointer font-medium">
-                                📸 <b>TradingView Pro Japon Mum Grafiğini Otomatik Çizip Tweet'e Ekle</b>
-                            </label>
-                        </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Paylaşım Tarzı & İçerik Karışımı:</label>
+                        <select id="sched-post-style-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-medium">
+                            <option value="smart_mix" selected>🎯 Akıllı Karma (Önerilen: Bazen Mum Grafikli Analiz, Bazen Salt Metin, Bazen 'Günaydın millet / Seans' Tweetleri)</option>
+                            <option value="always_chart">📸 Her Zaman TradingView Mum Grafikli Paylaş</option>
+                            <option value="text_only">📝 Her Zaman Fotoğrafsız / Salt Metin Paylaş</option>
+                        </select>
                     </div>
 
                     <div class="flex items-center justify-between p-3 bg-slate-800/60 border border-slate-700/80 rounded-xl">
@@ -743,6 +746,99 @@
                     </button>
                     <button type="button" onclick="triggerSchedulerNow()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold px-5 py-3.5 rounded-xl border border-slate-700 transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-bolt"></i> ⚡ Şimdi Test Et & Paylaş
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 7.5: TELEGRAM KÖPRÜSÜ ================= -->
+        <section id="tab-telegram" class="tab-content hidden space-y-6">
+            <div class="bg-gradient-to-br from-slate-900 to-sky-950/30 border border-slate-800 p-6 rounded-2xl shadow-xl max-w-3xl space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div>
+                        <h3 class="font-bold text-xl text-white flex items-center gap-2">
+                            <i class="fa-brands fa-telegram text-sky-400"></i> Telegram Kanalından 𝕏'e Otomatik Tweet Köprüsü
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Telegram kanalınıza atılan tüm mesajlar ve görseller otomatik dinlenir. <b>5 dakika içinde</b> peş peşe yazılan her şey tek bir zengin tweet veya tweet zinciri (thread) olarak birleştirilip X'te paylaşılır.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-xs text-slate-300 self-start sm:self-auto">
+                        <span>Havuzdaki Mesaj:</span>
+                        <span id="tg-pending-count" class="font-bold text-sky-400 font-mono">0</span>
+                    </div>
+                </div>
+
+                <!-- Master Toggle -->
+                <div class="flex items-center justify-between p-4 bg-slate-800/60 border border-slate-700/80 rounded-xl">
+                    <div>
+                        <span class="font-bold text-sm text-white block">Telegram Dinleyici Durumu</span>
+                        <span id="tg-status-badge" class="text-xs text-slate-400">Yükleniyor...</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="tg-enabled-switch" class="sr-only peer">
+                        <div class="w-12 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+                    </label>
+                </div>
+
+                <!-- Settings Form -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Telegram Bot Token (BotFather'dan Alınan Ücretsiz Token):</label>
+                        <div class="flex gap-2">
+                            <input type="password" id="tg-bot-token" placeholder="7123456789:AAFx..." class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-sky-500 font-mono placeholder-slate-500" />
+                            <button type="button" onclick="testTelegramBot()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sky-400 text-xs font-bold px-4 rounded-xl transition">
+                                <i class="fa-solid fa-plug"></i> Test Et
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">Telegram'da <b>@BotFather</b> ile 10 saniyede ücretsiz bir bot açıp tokeni buraya yapıştırın. Botu kanalınıza Yönetici (Admin) olarak ekleyin.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Telegram Kanal Kullanıcı Adı veya ID:</label>
+                            <input type="text" id="tg-channel-id" placeholder="@Kanaliniz veya -100..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-sky-500" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Birleştirme / Gruplama Süresi:</label>
+                            <select id="tg-window-minutes" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                                <option value="3">3 Dakika İçindeki Mesajlar</option>
+                                <option value="5" selected>5 Dakika İçindeki Mesajlar (Önerilen)</option>
+                                <option value="10">10 Dakika İçindeki Mesajlar</option>
+                                <option value="15">15 Dakika İçindeki Mesajlar</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tweeti Paylaşacak X Hesabı:</label>
+                            <select id="tg-account-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                                <!-- Populated dynamically from accounts -->
+                            </select>
+                        </div>
+                        <div class="flex items-center pt-5">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="tg-auto-boost" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-sky-500 focus:ring-sky-500">
+                                <span class="text-xs text-slate-300 font-medium">Paylaşıldıktan sonra diğer hesaplarla <b>otomatik kas (RT/Beğeni)</b></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 5 Minute Rule Info Box -->
+                    <div class="bg-sky-950/40 border border-sky-500/20 rounded-xl p-3.5 text-xs text-sky-300 space-y-1">
+                        <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-circle-info"></i> 5 Dakika Kuralı Nasıl Çalışır?</p>
+                        <p class="text-slate-300 text-[11px]">Kanalınıza 5 dakika aralıkla atılan tüm metinler ve fotoğraflar tek bir tweet içinde toplanır. 5 dakika boyunca yeni mesaj gelmezse havuz kapatılır ve X'te tweet olarak paylaşılır. 5 dakika geçtikten sonra atılan şeyler ise bağımsız yeni bir tweet olarak paylaşılır.</p>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="saveTelegramSettings()" class="flex-1 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-600/20 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Telegram Köprüsünü Kaydet & Aktifleştir
+                    </button>
+                    <button type="button" onclick="flushTelegramNow()" class="bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold px-5 py-3.5 rounded-xl border border-slate-700 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> ⚡ Havuzu Şimdi Tweetle (Beklemeden)
                     </button>
                 </div>
             </div>
@@ -811,6 +907,7 @@
             if (tabName === 'watchlist') fetchWatchlist();
             if (tabName === 'comments') fetchCommentSettings();
             if (tabName === 'autopilot') fetchSchedulerSettings();
+            if (tabName === 'telegram') fetchTelegramSettings();
             if (tabName === 'logs') fetchLogs();
         }
 
@@ -827,12 +924,15 @@
                 // Render accounts in table & select
                 const table = document.getElementById('accounts-table');
                 const composeSelect = document.getElementById('compose-account-select');
+                const tgSelect = document.getElementById('tg-account-select');
                 table.innerHTML = '';
                 composeSelect.innerHTML = '';
+                if (tgSelect) tgSelect.innerHTML = '';
 
                 if (currentStatus.accounts.length === 0) {
                     table.innerHTML = '<p class="text-sm text-slate-500 py-4">Henüz bağlı hesap yok. Soldaki formdan ekleyin.</p>';
                     composeSelect.innerHTML = '<option value="">Önce bir hesap ekleyin</option>';
+                    if (tgSelect) tgSelect.innerHTML = '<option value="">Önce bir hesap ekleyin</option>';
                 } else {
                     currentStatus.accounts.forEach(acc => {
                         const statusBadge = acc.connected 
@@ -860,6 +960,7 @@
                         `;
 
                         composeSelect.innerHTML += `<option value="${acc.username}">@${acc.username} (${acc.role})</option>`;
+                        if (tgSelect) tgSelect.innerHTML += `<option value="${acc.username}">@${acc.username} (${acc.role})</option>`;
                     });
                 }
 
@@ -1239,7 +1340,8 @@
                 document.getElementById('sched-interval-select').value = sched.interval_minutes || 60;
 
                 // Checkboxes & Selects
-                document.getElementById('sched-attach-chart').checked = sched.attach_chart !== false;
+                const postStyleSelect = document.getElementById('sched-post-style-select');
+                if (postStyleSelect) postStyleSelect.value = sched.post_style || 'smart_mix';
                 document.getElementById('sched-auto-boost').checked = sched.auto_boost !== false;
                 document.getElementById('sched-stock-select').value = sched.stock_symbol || 'auto_rotate';
                 document.getElementById('sched-persona-select').value = sched.persona || 'rotate';
@@ -1258,7 +1360,7 @@
             const enabled = document.getElementById('sched-enabled-switch').checked;
             const xDays = parseInt(document.getElementById('sched-every-x-days-val').value, 10) || 2;
             const intervalMins = parseInt(document.getElementById('sched-interval-select').value, 10) || 60;
-            const attachChart = document.getElementById('sched-attach-chart').checked;
+            const postStyle = document.getElementById('sched-post-style-select') ? document.getElementById('sched-post-style-select').value : 'smart_mix';
             const autoBoost = document.getElementById('sched-auto-boost').checked;
             const stockSymbol = document.getElementById('sched-stock-select').value;
             const persona = document.getElementById('sched-persona-select').value;
@@ -1280,7 +1382,8 @@
                         frequency: freq,
                         every_x_days: xDays,
                         interval_minutes: intervalMins,
-                        attach_chart: attachChart,
+                        post_style: postStyle,
+                        attach_chart: postStyle !== 'text_only',
                         auto_boost: autoBoost,
                         persona: persona,
                         stock_symbol: stockSymbol
@@ -1312,6 +1415,111 @@
                 }
             } catch (e) {
                 showToast("Tetikleme başarısız", true);
+            }
+        }
+
+        // ================= TELEGRAM BRIDGE JAVASCRIPT =================
+
+        async function fetchTelegramSettings() {
+            try {
+                const res = await fetch('/api/telegram');
+                const data = await res.json();
+                const cfg = data.config || {};
+
+                document.getElementById('tg-enabled-switch').checked = !!cfg.enabled;
+                document.getElementById('tg-bot-token').value = cfg.bot_token || '';
+                document.getElementById('tg-channel-id').value = cfg.channel_id || '';
+                document.getElementById('tg-window-minutes').value = data.batch_window_minutes || 5;
+                document.getElementById('tg-pending-count').textContent = data.pending_messages || 0;
+                document.getElementById('tg-auto-boost').checked = cfg.auto_boost !== false;
+                if (cfg.account) {
+                    document.getElementById('tg-account-select').value = cfg.account;
+                }
+
+                const badge = document.getElementById('tg-status-badge');
+                if (cfg.enabled) {
+                    badge.innerHTML = '<span class="text-sky-400 font-bold">● Aktif Dinleniyor (5 dk kuralı açık)</span>';
+                } else {
+                    badge.innerHTML = '<span class="text-slate-400">Durduruldu</span>';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function saveTelegramSettings() {
+            const enabled = document.getElementById('tg-enabled-switch').checked;
+            const token = document.getElementById('tg-bot-token').value.trim();
+            const channelId = document.getElementById('tg-channel-id').value.trim();
+            const windowMins = parseInt(document.getElementById('tg-window-minutes').value, 10) || 5;
+            const autoBoost = document.getElementById('tg-auto-boost').checked;
+            const account = document.getElementById('tg-account-select').value;
+
+            if (enabled && !token) {
+                showToast("Telegram Bot Token zorunludur!", true);
+                return;
+            }
+
+            showToast("Telegram köprü ayarları kaydediliyor...");
+            try {
+                const res = await fetch('/api/telegram/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        enabled: enabled,
+                        bot_token: token,
+                        channel_id: channelId,
+                        batch_window_minutes: windowMins,
+                        auto_boost: autoBoost,
+                        account: account
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(enabled ? "📡 Telegram Köprüsü Aktifleştirildi (5 Dk Havuzu Açık)!" : "Telegram Köprüsü Durduruldu");
+                    fetchTelegramSettings();
+                } else {
+                    showToast(data.error || "Hata oluştu", true);
+                }
+            } catch (e) {
+                showToast("Telegram ayarları kaydedilemedi", true);
+            }
+        }
+
+        async function flushTelegramNow() {
+            if (!confirm("Telegram havuzunda bekleyen mesajları 5 dakikalık süreyi beklemeden hemen şimdi tweetlemek istiyor musunuz?")) return;
+            showToast("Telegram havuzu hemen X'e aktarılıyor...");
+            try {
+                const res = await fetch('/api/telegram/flush_now', {method: 'POST'});
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                    fetchTelegramSettings();
+                } else {
+                    showToast(data.error || "Hata", true);
+                }
+            } catch (e) {
+                showToast("İşlem başlatılamadı", true);
+            }
+        }
+
+        async function testTelegramBot() {
+            const token = document.getElementById('tg-bot-token').value.trim();
+            if (!token) {
+                showToast("Lütfen önce Bot Token girin", true);
+                return;
+            }
+            showToast("Telegram bot bağlantısı test ediliyor...");
+            try {
+                const res = await fetch('/api/telegram/test_check', {method: 'POST'});
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                } else {
+                    showToast(data.error || "Bağlantı başarısız", true);
+                }
+            } catch (e) {
+                showToast("Telegram API'ye ulaşılamadı", true);
             }
         }
 

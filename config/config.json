@@ -37,8 +37,8 @@
     "auto_boost": true,
     "persona": "rotate",
     "stock_symbol": "auto_rotate",
-    "last_run_epoch": 0,
-    "last_run_str": ""
+    "last_run_epoch": 1792592958.166573,
+    "last_run_str": "2026-10-21 17:29"
   },
   "autopilot": {
     "enabled": true,

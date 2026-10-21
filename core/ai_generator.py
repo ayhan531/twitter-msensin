@@ -296,6 +296,87 @@ Görev: Bu haberi Borsa İstanbul (BIST), sektörler ve hisseler üzerindeki ola
         ]
         return random.choice(templates)
 
+    def generate_casual_community_tweet(self, category: str = "auto", persona_key: str = "sevecen_dost") -> str:
+        """
+        Generates friendly, human community tweets without charts:
+        - Morning greetings ("Günaydın millet...")
+        - Midday market checks
+        - Closing / evening farewells
+        - Market psychology / patience / discipline
+        """
+        now_hour = 10
+        try:
+            from datetime import datetime, timezone, timedelta
+            now_hour = datetime.now(timezone(timedelta(hours=3))).hour
+        except Exception:
+            pass
+
+        if category == "auto":
+            if 7 <= now_hour <= 11:
+                category = "morning"
+            elif 12 <= now_hour <= 15:
+                category = "midday"
+            elif 17 <= now_hour <= 21:
+                category = "closing"
+            else:
+                category = "sentiment"
+
+        system_prompt = f"""
+Sen Borsa İstanbul yatırımcı topluluğuyla samimi ve içten bağ kuran bir Türk borsa fenomenisin.
+Karakter: {persona_key}
+Görevin: Takipçilerine sıcak, samimi, esprili ve doğal bir Türkçe ile etkileşim tweeti yazmak. Asla bot gibi veya resmi konuşma.
+Kategori: {category}
+Kurallar:
+- Emojileri yerinde ve doğal kullan.
+- "Günaydın millet", "Bereketli seanslar", "Nasıl gidiyor borsa dostları" gibi doğal hitaplar kullan.
+- Maksimum 180-240 karakter olsun.
+"""
+        prompt = f"Lütfen '{category}' temalı samimi bir topluluk tweeti yaz."
+
+        ai_response = None
+        if self.provider == "gemini":
+            ai_response = self._call_gemini_api(prompt, system_prompt)
+        elif self.provider == "groq":
+            ai_response = self._call_groq_api(prompt, system_prompt)
+
+        if ai_response:
+            return ai_response
+
+        # Rich algorithmic fallback templates
+        morning_pool = [
+            "Günaydın millet! ☀️ Kahveler hazır mı? Borsa İstanbul'da bol kazançlı, yeşillerin bol olduğu bereketli bir seans olsun herkese. Disiplin ve planımıza sadık kalıyoruz. #BIST100 #günaydın",
+            "Herkese günaydın borsa dostları! Yeni gün, yeni fırsatlar. Açılış öncesi sakinliğimizi koruyup destek seviyelerine dikkat ediyoruz. Bereketli seanslar olsun! ☕📈 #BIST100",
+            "Günaydın millet! 🚀 Seans başlamak üzere. Panik yapmadan, acele etmeden stratejimizi uyguluyoruz. Bugünün kazananı sabredenler olsun! #borsa #günaydın",
+            "Günaydın herkese! ☕ Ekran başına geçenlere selam olsun. Moraller yüksek, hedefler net. Bol yeşilli bir seans dilerim dostlar! #BIST100"
+        ]
+
+        midday_pool = [
+            "Öğle arası geldi millet. Endekste testere piyasası devam ediyor, gün içi dalgalara kapılıp stopsuz iş yapmayın. Çaylar kahveler tazelensin! ☕📊 #BIST100",
+            "Piyasa tam bir sabır sınavı veriyor bugün. Hacim tarafı kritik seviyelerde. Sizde durumlar nasıl millet, seans nasıl geçiyor? 💬 #borsa #hisse",
+            "Öğle arası molası! Portföylere çok takılıp stres yapmayın millet, plan tıkır tıkır işliyorsa arkana yaslan. Bereketli ikinci yarı olsun! 🥪☕ #BIST100"
+        ]
+
+        closing_pool = [
+            "Zil çaldı, bugünkü seansı da geride bıraktık millet! Kapanış rakamlarını sindirme zamanı. Kazananlara afiyet olsun, zararda olanlar moral bozmasın, borsa fırsat bitmez. İyi akşamlar! 🌙 #BIST100",
+            "Kapanış geldi dostlar. Günün yorgunluğunu atalım, akşam analizleri için ekran başına geçeriz. Herkese huzurlu ve keyifli bir akşam dilerim! ☕✨ #borsa",
+            "Günü kapattık millet. Kimisi kar realize etti, kimisi sabırla beklemeye devam ediyor. Günün özeti: Sakin kalan kazanır. Herkese iyi akşamlar! 🌆 #BIST100"
+        ]
+
+        sentiment_pool = [
+            "Borsada en büyük sermaye para değil, sabırdır millet. Trend senin dostundur, trende karşı inatlaşan kaybeder. Planına sadık kal, arkana yaslan. 💎🙌 #BIST100 #borsa",
+            "Her gün işlem açmak zorunda değilsin millet. Bazen nakitte beklemek veya kenarda izlemek en karlı hamledir. Psikolojiyi sağlam tutan kazanır! 🧠📈 #hisse #borsa",
+            "Düşerken panikle satan, çıkarken FOMO ile tepeden alan olmayın dostlar. Planınız varsa borsa stres değil, keyif verir. Bereketiniz bol olsun! 🎯 #BIST100"
+        ]
+
+        if category == "morning":
+            return random.choice(morning_pool)
+        elif category == "midday":
+            return random.choice(midday_pool)
+        elif category == "closing":
+            return random.choice(closing_pool)
+        else:
+            return random.choice(sentiment_pool)
+
 
 
 if __name__ == "__main__":

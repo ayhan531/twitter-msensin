@@ -36,12 +36,14 @@ from core.chart_service import BISTChartService
 from core.engagement_pod import EngagementPodManager
 from core.twitter_actions import TwitterActions
 from core.watchlist_monitor import WatchlistMonitor
+from core.telegram_bridge import TelegramBridgeManager
 
 CONFIG_FILE = ROOT_DIR / "config" / "config.json"
 STATIC_DIR = ROOT_DIR / "web" / "static"
 TEMPLATES_DIR = ROOT_DIR / "web" / "templates"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 (STATIC_DIR / "charts").mkdir(parents=True, exist_ok=True)
+(STATIC_DIR / "telegram_media").mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="𝕏 BIST 100 AI Automation & Engagement Pod")
 
@@ -159,9 +161,27 @@ POPULAR_STOCKS = ["THYAO", "ASELS", "EREGL", "TUPRS", "AKBNK", "BIMAS", "XU100",
 PERSONAS = ["kurumsal_analist", "agresif_trader", "temkinli_yatirimci", "sevecen_dost"]
 rotation_counter = 0
 
+telegram_bridge = None
+
+def get_telegram_bridge() -> TelegramBridgeManager:
+    global telegram_bridge
+    if not telegram_bridge:
+        telegram_bridge = TelegramBridgeManager(
+            browser_mgr=browser_mgr,
+            ai_gen=get_ai_generator(),
+            get_config_fn=get_config,
+            save_config_fn=save_config,
+            log_event_fn=log_event
+        )
+    return telegram_bridge
+
 def execute_scheduled_task(source: str = "Zamanlayıcı") -> dict:
     """
     Executes automated chart generation, AI analysis, tweet posting and cross-boosting.
+    Supports smart mix:
+    - Candlestick chart analysis (with photo)
+    - Stock focus market insight (without photo)
+    - Friendly community tweets ('Günaydın millet', 'Seans kapanışı', 'Borsada sabır') (without photo)
     """
     global rotation_counter
     ensure_sessions_restored()
@@ -191,22 +211,52 @@ def execute_scheduled_task(source: str = "Zamanlayıcı") -> dict:
 
     rotation_counter += 1
 
-    # 3. Generate Chart Image
-    attach_chart = sched.get("attach_chart", True)
-    media_path = None
-    chart_url = chart_service.generate_chart_image(stock_sym)
-    if attach_chart and chart_url:
-        filename = os.path.basename(chart_url.split("?")[0])
-        media_path = str(STATIC_DIR / "charts" / filename)
+    # 3. Determine Post Type & Media Attachment
+    post_style = sched.get("post_style", "smart_mix")  # "smart_mix", "always_chart", "text_only"
+    now_tr = datetime.now(TURKEY_TZ)
+    hour = now_tr.hour
 
-    # 4. Generate AI Analysis Tweet strictly synchronized with chart
-    analysis = chart_service.analyze_symbol(stock_sym)
     ai_gen = get_ai_generator()
-    tweet_text = ai_gen.generate_chart_tweet(analysis, persona_key=persona_key)
+    media_path = None
+    tweet_kind = "chart"
 
-    log_event(f"⏰ [{source}] @{analyst} hesabıyla {stock_sym} analizi paylaşılıyor (Karakter: {persona_key})...", "info")
+    if post_style == "smart_mix":
+        # Morning slot (07:30 - 10:30): 55% chance of a warm "Günaydın millet" tweet
+        if 7 <= hour <= 10 and (rotation_counter % 2 == 0):
+            tweet_kind = "community_morning"
+        # Evening slot (17:30 - 21:00): 45% chance of a closing/community tweet
+        elif 17 <= hour <= 21 and (rotation_counter % 2 == 1):
+            tweet_kind = "community_closing"
+        # Midday: 35% chance of pure-text market insight or psychology (no photo)
+        elif (rotation_counter % 3 == 0):
+            tweet_kind = "text_only"
+    elif post_style == "text_only":
+        tweet_kind = "text_only"
 
-    # 5. Post & Cross-Boost
+    if tweet_kind == "community_morning":
+        tweet_text = ai_gen.generate_casual_community_tweet("morning", persona_key=persona_key)
+        media_path = None
+        log_event(f"⏰ [{source}] @{analyst} samimi 'Günaydın millet' tweeti paylaşıyor (Fotoğrafsız)...", "info")
+    elif tweet_kind == "community_closing":
+        tweet_text = ai_gen.generate_casual_community_tweet("closing", persona_key=persona_key)
+        media_path = None
+        log_event(f"⏰ [{source}] @{analyst} samimi seans kapanış tweeti paylaşıyor (Fotoğrafsız)...", "info")
+    elif tweet_kind == "text_only":
+        analysis = chart_service.analyze_symbol(stock_sym)
+        tweet_text = ai_gen.generate_chart_tweet(analysis, persona_key=persona_key)
+        media_path = None
+        log_event(f"⏰ [{source}] @{analyst} #{stock_sym} piyasa analizi paylaşıyor (Fotoğrafsız salt metin)...", "info")
+    else:
+        # Chart Analysis with Candlestick Image
+        chart_url = chart_service.generate_chart_image(stock_sym)
+        if chart_url:
+            filename = os.path.basename(chart_url.split("?")[0])
+            media_path = str(STATIC_DIR / "charts" / filename)
+        analysis = chart_service.analyze_symbol(stock_sym)
+        tweet_text = ai_gen.generate_chart_tweet(analysis, persona_key=persona_key)
+        log_event(f"⏰ [{source}] @{analyst} #{stock_sym} TradingView mum grafiğiyle analiz paylaşıyor...", "info")
+
+    # 4. Post & Cross-Boost
     auto_boost = sched.get("auto_boost", True)
     pod_mgr = EngagementPodManager(browser_mgr, ai_gen)
     if auto_boost and helpers:
@@ -223,7 +273,7 @@ def execute_scheduled_task(source: str = "Zamanlayıcı") -> dict:
         finally:
             ctx.close()
 
-    # 6. Check Watchlist Targets
+    # 5. Check Watchlist Targets
     watchlist = cfg.get("watchlist", [])
     if watchlist and helpers:
         monitor = get_watchlist_monitor()
@@ -302,13 +352,15 @@ def stop_scheduler_worker():
     global scheduler_running
     scheduler_running = False
 
-# Auto-start scheduler if enabled on server boot
+# Auto-start scheduler and telegram bridge if enabled on server boot
 @app.on_event("startup")
 async def startup_event():
     ensure_sessions_restored()
     cfg = get_config()
     if cfg.get("scheduler", {}).get("enabled", False):
         start_scheduler_worker()
+    if cfg.get("telegram", {}).get("enabled", False):
+        get_telegram_bridge().start()
 
 # ----------------- ROUTES -----------------
 
@@ -363,6 +415,7 @@ class SchedulerSavePayload(BaseModel):
     frequency: str = "every_day"  # "every_day", "weekdays", "every_x_days"
     every_x_days: int = 2
     interval_minutes: int = 60
+    post_style: str = "smart_mix"  # "smart_mix", "always_chart", "text_only"
     attach_chart: bool = True
     auto_boost: bool = True
     persona: str = "rotate"
@@ -378,6 +431,7 @@ async def save_scheduler_endpoint(payload: SchedulerSavePayload):
         "frequency": payload.frequency,
         "every_x_days": max(1, payload.every_x_days),
         "interval_minutes": max(10, payload.interval_minutes),
+        "post_style": payload.post_style,
         "attach_chart": payload.attach_chart,
         "auto_boost": payload.auto_boost,
         "persona": payload.persona,
@@ -394,7 +448,7 @@ async def save_scheduler_endpoint(payload: SchedulerSavePayload):
 
     if payload.enabled:
         start_scheduler_worker()
-        log_event(f"⏰ Akıllı Zamanlayıcı AÇILDI ({payload.mode} modu, {payload.frequency})", "success")
+        log_event(f"⏰ Akıllı Zamanlayıcı AÇILDI ({payload.mode} modu, {payload.frequency}, tarz: {payload.post_style})", "success")
     else:
         stop_scheduler_worker()
         log_event("⏰ Akıllı Zamanlayıcı KAPATILDI", "warning")
@@ -407,6 +461,74 @@ async def trigger_scheduler_now(background_tasks: BackgroundTasks):
     log_event("⚡ Manuel tetikleme alındı: Otomatik BIST analizi ve kasma başlatılıyor...", "info")
     background_tasks.add_task(execute_scheduled_task, "Manuel Tetikleme")
     return {"success": True, "message": "Zamanlanmış analiz görevi hemen başlatıldı!"}
+
+# ----------------- TELEGRAM BRIDGE ENDPOINTS -----------------
+
+@app.get("/api/telegram")
+async def get_telegram_status():
+    tb = get_telegram_bridge()
+    tg_cfg = tb.get_telegram_config()
+    pending_count = len(tb.current_batch.items) if (tb.current_batch and tb.current_batch.items) else 0
+    return {
+        "config": tg_cfg,
+        "running": tb.running,
+        "pending_messages": pending_count,
+        "batch_window_minutes": int(tg_cfg.get("batch_window_seconds", 300)) // 60
+    }
+
+class TelegramSavePayload(BaseModel):
+    enabled: bool
+    bot_token: str
+    channel_id: str
+    batch_window_minutes: int = 5
+    auto_boost: bool = True
+    account: str = "Borsagenci"
+
+@app.post("/api/telegram/save")
+async def save_telegram_endpoint(payload: TelegramSavePayload):
+    tb = get_telegram_bridge()
+    tg_cfg = {
+        "enabled": payload.enabled,
+        "bot_token": payload.bot_token.strip(),
+        "channel_id": payload.channel_id.strip(),
+        "batch_window_seconds": max(60, payload.batch_window_minutes * 60),
+        "auto_boost": payload.auto_boost,
+        "account": payload.account.strip().lstrip("@"),
+        "last_update_id": tb.get_telegram_config().get("last_update_id", 0)
+    }
+    tb.save_telegram_config(tg_cfg)
+
+    if payload.enabled:
+        tb.start()
+        log_event(f"📡 Telegram Köprüsü AÇILDI ({payload.batch_window_minutes} dk gruplama penceresi)", "success")
+    else:
+        tb.stop()
+        log_event("📡 Telegram Köprüsü DURDURULDU", "warning")
+
+    return {"success": True, "config": tg_cfg, "running": tb.running}
+
+@app.post("/api/telegram/flush_now")
+async def flush_telegram_now(background_tasks: BackgroundTasks):
+    tb = get_telegram_bridge()
+    background_tasks.add_task(tb.force_flush_now)
+    return {"success": True, "message": "Bekleyen Telegram mesaj havuzunu hemen tweetleme görevi başlatıldı!"}
+
+@app.post("/api/telegram/test_check")
+async def test_telegram_connection():
+    tb = get_telegram_bridge()
+    tg_cfg = tb.get_telegram_config()
+    token = tg_cfg.get("bot_token", "").strip()
+    if not token:
+        return JSONResponse({"success": False, "error": "Bot token girilmemiş."}, status_code=400)
+    try:
+        r = requests.get(f"https://api.telegram.org/bot{token}/getMe", timeout=10)
+        if r.status_code == 200:
+            bot_info = r.json().get("result", {})
+            return {"success": True, "bot": bot_info, "message": f"Bağlantı başarılı: @{bot_info.get('username')}"}
+        else:
+            return JSONResponse({"success": False, "error": f"Telegram API Hatası: {r.text}"}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=400)
 
 class AddAccountPayload(BaseModel):
     username: str
