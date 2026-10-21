@@ -4,6 +4,7 @@ Generates professional Japanese Candlestick charts with EMA, Volume, and RSI sub
 """
 
 import os
+import time
 import requests
 import warnings
 from pathlib import Path
@@ -19,6 +20,96 @@ warnings.filterwarnings("ignore")
 CHART_DIR = Path(__file__).resolve().parent.parent / "web" / "static" / "charts"
 CHART_DIR.mkdir(parents=True, exist_ok=True)
 
+def resolve_yahoo_symbol(symbol: str):
+    """
+    Intelligently maps any user input to standard Yahoo Finance symbol,
+    asset category, display symbol, and currency unit.
+    Supports: Crypto/Coin, BIST, Commodities (Gold/Oil), Forex (USD/EUR), US Stocks.
+    """
+    s = symbol.strip().upper().replace(" ", "").lstrip("$").lstrip("#")
+
+    # 1. Crypto / Coins
+    crypto_map = {
+        "BTC": "BTC-USD", "BITCOIN": "BTC-USD", "BTCUSDT": "BTC-USD", "BTCUSD": "BTC-USD",
+        "ETH": "ETH-USD", "ETHEREUM": "ETH-USD", "ETHUSDT": "ETH-USD",
+        "SOL": "SOL-USD", "SOLANA": "SOL-USD", "SOLUSDT": "SOL-USD",
+        "XRP": "XRP-USD", "RIPPLE": "XRP-USD", "XRPUSDT": "XRP-USD",
+        "DOGE": "DOGE-USD", "DOGECOIN": "DOGE-USD", "DOGEUSDT": "DOGE-USD",
+        "AVAX": "AVAX-USD", "AVAXUSDT": "AVAX-USD",
+        "BNB": "BNB-USD", "BNBUSDT": "BNB-USD",
+        "PEPE": "PEPE-USD", "SHIB": "SHIB-USD", "SUI": "SUI-USD",
+        "ADA": "ADA-USD", "DOT": "DOT-USD", "LINK": "LINK-USD", "LTC": "LTC-USD",
+        "NEAR": "NEAR-USD", "APT": "APT-USD", "RENDER": "RENDER-USD", "FET": "FET-USD"
+    }
+    if s in crypto_map:
+        return crypto_map[s], s, "Kripto / Coin", "$"
+    if s.endswith("USDT"):
+        base = s[:-4]
+        return f"{base}-USD", base, "Kripto / Coin", "$"
+    if s.endswith("-USD"):
+        base = s.replace("-USD", "")
+        return s, base, "Kripto / Coin", "$"
+
+    # 2. Commodities (Altın, Gümüş, Petrol vb.)
+    commodity_map = {
+        "ALTIN": ("GC=F", "ONS ALTIN", "Emtia / Değerli Metal", "$"),
+        "GOLD": ("GC=F", "ONS ALTIN", "Emtia / Değerli Metal", "$"),
+        "XAUUSD": ("GC=F", "ONS ALTIN", "Emtia / Değerli Metal", "$"),
+        "ONS": ("GC=F", "ONS ALTIN", "Emtia / Değerli Metal", "$"),
+        "GUMUS": ("SI=F", "GÜMÜŞ ONS", "Emtia / Değerli Metal", "$"),
+        "SILVER": ("SI=F", "GÜMÜŞ ONS", "Emtia / Değerli Metal", "$"),
+        "XAGUSD": ("SI=F", "GÜMÜŞ ONS", "Emtia / Değerli Metal", "$"),
+        "BRENT": ("BZ=F", "BRENT PETROL", "Emtia / Enerji", "$"),
+        "PETROL": ("BZ=F", "BRENT PETROL", "Emtia / Enerji", "$"),
+        "OIL": ("CL=F", "HAM PETROL (WTI)", "Emtia / Enerji", "$"),
+        "CRUDE": ("CL=F", "HAM PETROL (WTI)", "Emtia / Enerji", "$"),
+        "DOGALGAZ": ("NG=F", "DOĞALGAZ", "Emtia / Enerji", "$"),
+        "GAS": ("NG=F", "DOĞALGAZ", "Emtia / Enerji", "$"),
+        "BAKIR": ("HG=F", "BAKIR", "Emtia / Metal", "$"),
+        "COPPER": ("HG=F", "BAKIR", "Emtia / Metal", "$")
+    }
+    if s in commodity_map:
+        c_sym, d_sym, a_type, c_unit = commodity_map[s]
+        return c_sym, d_sym, a_type, c_unit
+
+    # 3. Forex & Currency
+    forex_map = {
+        "USDTRY": ("USDTRY=X", "DOLAR / TL", "Döviz / Forex", "TL"),
+        "DOLAR": ("USDTRY=X", "DOLAR / TL", "Döviz / Forex", "TL"),
+        "EURTRY": ("EURTRY=X", "EURO / TL", "Döviz / Forex", "TL"),
+        "EURO": ("EURTRY=X", "EURO / TL", "Döviz / Forex", "TL"),
+        "EURUSD": ("EURUSD=X", "EUR / USD", "Forex Parite", "$"),
+        "GBPUSD": ("GBPUSD=X", "GBP / USD", "Forex Parite", "$"),
+        "GBPTRY": ("GBPTRY=X", "STERLİN / TL", "Döviz / Forex", "TL"),
+        "STERLIN": ("GBPTRY=X", "STERLİN / TL", "Döviz / Forex", "TL"),
+        "DXY": ("DX-Y.NYB", "DOLAR ENDEKSİ (DXY)", "Küresel Endeks", "puan"),
+        "SP500": ("^GSPC", "S&P 500", "Küresel Endeks", "$"),
+        "NASDAQ": ("^IXIC", "NASDAQ", "Küresel Endeks", "$"),
+        "DOW": ("^DJI", "DOW JONES", "Küresel Endeks", "$")
+    }
+    if s in forex_map:
+        f_sym, d_sym, a_type, c_unit = forex_map[s]
+        return f_sym, d_sym, a_type, c_unit
+
+    # 4. Global Major US Stocks
+    us_stocks = ["NVDA", "AAPL", "TSLA", "MSFT", "AMZN", "GOOGL", "META", "AMD", "NFLX", "COIN", "PLTR", "INTC"]
+    if s in us_stocks:
+        return s, s, "ABD Borsası (Hisse)", "$"
+
+    # 5. BIST Endeksleri
+    if s in ["XU100", "BIST100", "BIST"]:
+        return "XU100.IS", "BIST 100", "BIST Endeksi", "puan"
+    if s in ["XU030", "BIST30"]:
+        return "XU030.IS", "BIST 30", "BIST Endeksi", "puan"
+    if s in ["XBANK", "BANKA"]:
+        return "XBANK.IS", "BIST Bankacılık", "BIST Endeksi", "puan"
+    if s in ["XUSIN", "SANAYI"]:
+        return "XUSIN.IS", "BIST Sınai", "BIST Endeksi", "puan"
+
+    # 6. Default: Turkish BIST Stock
+    clean_bist = s.replace(".IS", "")
+    return f"{clean_bist}.IS", clean_bist, "BIST Hissesi", "TL"
+
 class BISTChartService:
     def __init__(self):
         self.headers = {
@@ -26,11 +117,8 @@ class BISTChartService:
         }
 
     def fetch_history(self, symbol: str, range_str: str = "1mo", interval: str = "1d") -> Optional[Dict[str, Any]]:
-        clean_symbol = symbol.upper()
-        if not clean_symbol.endswith(".IS") and not clean_symbol.startswith("^"):
-            clean_symbol = f"{clean_symbol}.IS"
-
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{clean_symbol}?range={range_str}&interval={interval}"
+        query_sym, _, _, _ = resolve_yahoo_symbol(symbol)
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{query_sym}?range={range_str}&interval={interval}"
         try:
             resp = requests.get(url, headers=self.headers, timeout=10)
             if resp.status_code != 200:
@@ -104,24 +192,29 @@ class BISTChartService:
         }
 
     def analyze_symbol(self, symbol: str) -> Dict[str, Any]:
-        """Performs full technical calculation and prepares summary for AI"""
+        """Performs full technical calculation and prepares summary for AI across any asset"""
+        query_sym, display_sym, asset_type, c_unit = resolve_yahoo_symbol(symbol)
         hist = self.fetch_history(symbol, range_str="1mo", interval="1d")
         if not hist:
-            return {"symbol": symbol, "error": "Veri alinamadi"}
+            return {"symbol": display_sym, "asset_type": asset_type, "currency_unit": c_unit, "error": "Veri alınamadı"}
 
         quotes = hist.get("indicators", {}).get("quote", [{}])[0]
         raw_closes = quotes.get("close", [])
         closes = [c for c in raw_closes if c is not None]
 
         indicators = self.calculate_indicators(closes)
-        indicators["symbol"] = symbol.upper().replace(".IS", "")
+        indicators["symbol"] = display_sym
+        indicators["query_symbol"] = query_sym
+        indicators["asset_type"] = asset_type
+        indicators["currency_unit"] = c_unit
         return indicators
 
     def generate_chart_image(self, symbol: str) -> Optional[str]:
         """
         Generates a stunning TradingView Pro style Candlestick (Mum) chart with
-        Volume bars and RSI(14) indicator.
+        Volume bars and RSI(14) indicator for any asset (BIST, Crypto, Commodity, Forex).
         """
+        query_sym, display_sym, asset_type, c_unit = resolve_yahoo_symbol(symbol)
         hist = self.fetch_history(symbol, range_str="1mo", interval="1d")
         if not hist:
             return None
@@ -192,7 +285,7 @@ class BISTChartService:
             
             # Draw candle body
             body_bottom = min(op, cl)
-            body_height = max(abs(cl - op), 0.05)  # Min height for doji
+            body_height = max(abs(cl - op), (max(highs) - min(lows)) * 0.005)  # Responsive min height for doji
             ax_main.bar(x=i, height=body_height, bottom=body_bottom, width=0.68, color=color, edgecolor=color, linewidth=0.5)
 
         # Plot EMAs
@@ -204,22 +297,22 @@ class BISTChartService:
         # Horizontal Support & Resistance lines
         supp = indicators.get("support", min(lows))
         ress = indicators.get("resistance", max(highs))
-        ax_main.axhline(y=supp, color='#10b981', linestyle=':', linewidth=1.2, alpha=0.7, label=f'Destek: {supp} TL')
-        ax_main.axhline(y=ress, color='#ef4444', linestyle=':', linewidth=1.2, alpha=0.7, label=f'Direnç: {ress} TL')
+        ax_main.axhline(y=supp, color='#10b981', linestyle=':', linewidth=1.2, alpha=0.7, label=f'Destek: {supp:,.2f} {c_unit}')
+        ax_main.axhline(y=ress, color='#ef4444', linestyle=':', linewidth=1.2, alpha=0.7, label=f'Direnç: {ress:,.2f} {c_unit}')
 
         # Current Price Badge on the right
         price_badge_color = GREEN_COLOR if change_pct >= 0 else RED_COLOR
         ax_main.text(
-            N - 0.5, current_price, f" {current_price:.2f} TL (%{change_pct:+.2f})",
+            N - 0.5, current_price, f" {current_price:,.2f} {c_unit} (%{change_pct:+.2f})",
             color='#ffffff', fontsize=9, fontweight='bold',
             verticalalignment='center',
             bbox=dict(boxstyle='square,pad=0.25', facecolor=price_badge_color, edgecolor='none')
         )
 
         # Title / Watermark Header
-        clean_sym = symbol.upper().replace(".IS", "")
+        clean_title = f"{display_sym} ({asset_type})"
         ax_main.set_title(
-            f"  {clean_sym} • 1 Günlük Mum Grafiği • Son: {current_price:.2f} TL  |  Görünüm: {trend_label}",
+            f"  {clean_title} • Günlük Mum Grafiği • Son: {current_price:,.2f} {c_unit}  |  Görünüm: {trend_label}",
             color=TEXT_COLOR, fontsize=12, fontweight='bold', loc='left', pad=12
         )
 
@@ -254,7 +347,8 @@ class BISTChartService:
         ax_rsi.set_xticklabels(["1 Ay Önce", "3 Hafta Önce", "2 Hafta Önce", "1 Hafta Önce", "Bugün"])
 
         plt.tight_layout()
-        filename = f"chart_{clean_sym.lower()}.png"
+        safe_file_sym = "".join(c for c in display_sym if c.isalnum() or c in ("_", "-")).lower()
+        filename = f"chart_{safe_file_sym}_{int(time.time()) % 10000}.png"
         filepath = CHART_DIR / filename
         plt.savefig(filepath, dpi=140, facecolor=BG_COLOR, edgecolor='none')
         plt.close(fig)

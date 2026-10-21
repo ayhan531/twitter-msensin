@@ -181,7 +181,7 @@ Karakter Görevi: Karakterine ve üslubuna tam uyarak #{sym} için X (Twitter) a
 
     def generate_chart_tweet(self, indicators: Dict[str, Any], persona_key: str = "kurumsal_analist") -> str:
         """
-        Generates technical commentary strictly synchronized with the given chart indicators and persona.
+        Generates technical commentary strictly synchronized with the given chart indicators and persona across all asset classes.
         """
         sym = indicators.get("symbol", "THYAO")
         price = indicators.get("current_price", 0)
@@ -191,20 +191,26 @@ Karakter Görevi: Karakterine ve üslubuna tam uyarak #{sym} için X (Twitter) a
         support = indicators.get("support", price)
         resistance = indicators.get("resistance", price)
         trend = indicators.get("trend", "Nötr")
+        asset_type = indicators.get("asset_type", "Piyasa Varlığı")
+        c_unit = indicators.get("currency_unit", "TL")
 
         persona_data = PERSONAS.get(persona_key, PERSONAS.get("kurumsal_analist"))
         system_prompt = persona_data["system_prompt"]
 
-        prompt = f"""
-Grafik Analiz Verileri:
-- Hisse: #{sym}
-- Son Fiyat: {price} TL
-- RSI (14): {rsi}
-- EMA 9: {ema9} TL | EMA 21: {ema21} TL
-- Destek: {support} TL | Direnç: {resistance} TL
-- Trend: {trend}
+        market_term = "kripto para / coin terimleri" if "Kripto" in asset_type else ("altın / emtia terimleri" if "Emtia" in asset_type else ("forex / kur paritesi terimleri" if "Döviz" in asset_type or "Forex" in asset_type else "hisse senedi / borsa terimleri"))
 
-Görev: Bu teknik mum grafiği göstergelerine dayanarak #{sym} için karakterine uygun bir tweet yaz. Mutlaka #{sym} hissesinden ve bu seviyelerden bahset. Sonuna (YTD) ekle.
+        prompt = f"""
+Grafik & Teknik Analiz Verileri:
+- Varlık / Enstrüman: #{sym} ({asset_type})
+- Güncel Fiyat: {price:,.2f} {c_unit}
+- RSI (14): {rsi}
+- EMA 9: {ema9:,.2f} {c_unit} | EMA 21: {ema21:,.2f} {c_unit}
+- Destek Seviyesi: {support:,.2f} {c_unit} | Direnç Seviyesi: {resistance:,.2f} {c_unit}
+- Genel Trend: {trend}
+
+Görev: Bu teknik mum grafiği göstergelerine dayanarak #{sym} ({asset_type}) için seçilen karaktere tam uygun, profesyonel ve etkileyici bir tweet yaz. 
+Varlığın türüne ({asset_type}) göre doğru piyasa terimlerini ({market_term}) kullan. 
+Mutlaka #{sym} etiketinden ve destek/direnç seviyelerinden bahset. Fiyat birimini ({c_unit}) doğru kullan. Sonuna (YTD) ekle.
 """
         ai_response = None
         if self.provider == "gemini":
@@ -218,7 +224,7 @@ Görev: Bu teknik mum grafiği göstergelerine dayanarak #{sym} için karakterin
         # Fallback templates for this persona
         templates = persona_data.get("fallback_templates", FALLBACK_TEMPLATES)
         template = random.choice(templates)
-        return template.format(
+        formatted = template.format(
             symbol=sym,
             price=price,
             change_pct=round(((price - ema9) / ema9) * 100, 2) if ema9 else 0.0,
@@ -231,6 +237,22 @@ Görev: Bu teknik mum grafiği göstergelerine dayanarak #{sym} için karakterin
             ema9=ema9,
             ema21=ema21
         )
+        if "Kripto" in asset_type:
+            formatted = formatted.replace("BIST 100 öncü hisselerinden", "Kripto para piyasasında")
+            formatted = formatted.replace("hisselerinde", "kripto piyasasında")
+            formatted = formatted.replace("hissesinde", "grafiğinde")
+        elif "Emtia" in asset_type:
+            formatted = formatted.replace("BIST 100 öncü hisselerinden", "Küresel emtia piyasasında")
+            formatted = formatted.replace("hisselerinde", "emtia piyasasında")
+            formatted = formatted.replace("hissesinde", "grafiğinde")
+        elif "Döviz" in asset_type or "Forex" in asset_type:
+            formatted = formatted.replace("BIST 100 öncü hisselerinden", "Döviz ve parite piyasasında")
+            formatted = formatted.replace("hisselerinde", "kurlarda")
+            formatted = formatted.replace("hissesinde", "paritesinde")
+
+        if c_unit != "TL":
+            formatted = formatted.replace(" TL", f" {c_unit}")
+        return formatted
 
     def generate_reply(
         self, 

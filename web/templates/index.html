@@ -182,20 +182,92 @@
         <!-- ================= TAB 3: GRAFİK & TEKNİK ANALİZ ================= -->
         <section id="tab-charts" class="tab-content hidden space-y-6">
             <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-3 w-full md:w-auto">
-                    <label class="text-sm font-medium text-slate-300">Hisse:</label>
-                    <select id="chart-symbol-select" onchange="loadChartAnalysis()" class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-                        <option value="THYAO">THYAO - Türk Hava Yolları</option>
-                        <option value="ASELS">ASELS - Aselsan</option>
-                        <option value="EREGL">EREGL - Ereğli Demir Çelik</option>
-                        <option value="TUPRS">TUPRS - Tüpraş</option>
-                        <option value="AKBNK">AKBNK - Akbank</option>
-                        <option value="BIMAS">BIMAS - BİM Mağazalar</option>
-                        <option value="XU100">XU100 - BIST 100 Endeksi</option>
-                        <option value="SASA">SASA - Sasa Polyester</option>
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <label class="text-sm font-medium text-slate-300">Piyasa / Varlık:</label>
+                    <select id="chart-symbol-select" onchange="loadChartAnalysis()" class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 max-w-[280px]">
+                        <optgroup label="🔥 Kripto Paralar (Coinler)">
+                            <option value="BTC">BTC - Bitcoin (BTC/USD)</option>
+                            <option value="ETH">ETH - Ethereum (ETH/USD)</option>
+                            <option value="SOL">SOL - Solana (SOL/USD)</option>
+                            <option value="XRP">XRP - Ripple (XRP/USD)</option>
+                            <option value="DOGE">DOGE - Dogecoin</option>
+                            <option value="AVAX">AVAX - Avalanche</option>
+                            <option value="BNB">BNB - Binance Coin</option>
+                            <option value="PEPE">PEPE - Pepe Coin</option>
+                            <option value="SUI">SUI - Sui Network</option>
+                            <option value="SHIB">SHIB - Shiba Inu</option>
+                            <option value="ADA">ADA - Cardano</option>
+                            <option value="LINK">LINK - Chainlink</option>
+                        </optgroup>
+                        <optgroup label="🪙 Emtialar & Metaller">
+                            <option value="ALTIN">ALTIN - Ons Altın (XAU/USD)</option>
+                            <option value="GUMUS">GÜMÜŞ - Ons Gümüş (XAG/USD)</option>
+                            <option value="BRENT">BRENT - Brent Petrol</option>
+                            <option value="OIL">HAM PETROL - WTI Crude</option>
+                            <option value="DOGALGAZ">DOĞALGAZ - Natural Gas</option>
+                            <option value="BAKIR">BAKIR - Copper</option>
+                        </optgroup>
+                        <optgroup label="💱 Forex & Döviz Kurları">
+                            <option value="USDTRY">USD/TRY - Dolar / TL</option>
+                            <option value="EURTRY">EUR/TRY - Euro / TL</option>
+                            <option value="EURUSD">EUR/USD - Euro / Dolar</option>
+                            <option value="GBPUSD">GBP/USD - Sterlin / Dolar</option>
+                            <option value="DXY">DXY - Dolar Endeksi</option>
+                        </optgroup>
+                        <optgroup label="📈 BIST 30 & BIST 100 Hisseleri" selected>
+                            <option value="THYAO" selected>THYAO - Türk Hava Yolları</option>
+                            <option value="ASELS">ASELS - Aselsan</option>
+                            <option value="EREGL">EREGL - Ereğli Demir Çelik</option>
+                            <option value="TUPRS">TUPRS - Tüpraş</option>
+                            <option value="AKBNK">AKBNK - Akbank</option>
+                            <option value="ISCTR">ISCTR - İş Bankası</option>
+                            <option value="GARAN">GARAN - Garanti BBVA</option>
+                            <option value="YKBNK">YKBNK - Yapı Kredi</option>
+                            <option value="BIMAS">BIMAS - BİM Mağazalar</option>
+                            <option value="SASA">SASA - Sasa Polyester</option>
+                            <option value="KCHOL">KCHOL - Koç Holding</option>
+                            <option value="SAHOL">SAHOL - Sabancı Holding</option>
+                            <option value="SISE">SISE - Şişecam</option>
+                            <option value="FROTO">FROTO - Ford Otosan</option>
+                            <option value="TOASO">TOASO - Tofaş Oto</option>
+                            <option value="PGSUS">PGSUS - Pegasus</option>
+                            <option value="PETKM">PETKM - Petkim</option>
+                            <option value="TCELL">TCELL - Turkcell</option>
+                            <option value="TTKOM">TTKOM - Türk Telekom</option>
+                            <option value="ASTOR">ASTOR - Astor Enerji</option>
+                            <option value="KOZAL">KOZAL - Koza Altın</option>
+                            <option value="EKGYO">EKGYO - Emlak Konut GYO</option>
+                            <option value="ENKAI">ENKAI - Enka İnşaat</option>
+                            <option value="GUBRF">GUBRF - Gübre Fabrikaları</option>
+                            <option value="HEKTS">HEKTS - Hektaş</option>
+                            <option value="ALARK">ALARK - Alarko Holding</option>
+                            <option value="KONTR">KONTR - Kontrolmatik</option>
+                            <option value="OYAKC">OYAKC - Oyak Çimento</option>
+                            <option value="ODAS">ODAS - Odaş Elektrik</option>
+                            <option value="XU100">XU100 - BIST 100 Endeksi</option>
+                            <option value="XU030">XU030 - BIST 30 Endeksi</option>
+                            <option value="XBANK">XBANK - Bankacılık Endeksi</option>
+                        </optgroup>
+                        <optgroup label="🌐 ABD Borsaları (Global Devler)">
+                            <option value="NVDA">NVDA - Nvidia</option>
+                            <option value="AAPL">AAPL - Apple</option>
+                            <option value="TSLA">TSLA - Tesla</option>
+                            <option value="MSFT">MSFT - Microsoft</option>
+                            <option value="AMZN">AMZN - Amazon</option>
+                            <option value="GOOGL">GOOGL - Google Alphabet</option>
+                            <option value="META">META - Meta (Facebook)</option>
+                            <option value="COIN">COIN - Coinbase</option>
+                        </optgroup>
                     </select>
 
-                    <label class="text-sm font-medium text-slate-300">Karakter:</label>
+                    <!-- Serbest Sembol Arama Kutusu -->
+                    <div class="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1">
+                        <i class="fa-solid fa-magnifying-glass text-xs text-slate-400"></i>
+                        <input type="text" id="chart-custom-symbol-input" placeholder="İstediğin hisse/coin/parite (örn: MGROS, SOL, PLTR)..." class="bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none w-52 py-1 uppercase" onkeydown="if(event.key==='Enter')loadCustomSymbolChart();" />
+                        <button type="button" onclick="loadCustomSymbolChart()" class="bg-emerald-600/80 hover:bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition">Çiz</button>
+                    </div>
+
+                    <label class="text-sm font-medium text-slate-300 ml-1">Karakter:</label>
                     <select id="chart-persona-select" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
                         <option value="kurumsal_analist">🧐 Kurumsal / Teknik Analist</option>
                         <option value="agresif_trader">⚡ Agresif Day Trader</option>
@@ -204,7 +276,7 @@
                     </select>
                 </div>
                 <div class="flex gap-2 w-full md:w-auto">
-                    <button onclick="generateChartTweet()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition flex items-center gap-2">
+                    <button onclick="generateChartTweet()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-emerald-600/20">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> Bu Grafiği Yorumla & Tweetle
                     </button>
                 </div>
@@ -429,11 +501,20 @@
                         </div>
                         <select id="compose-chart-symbol" class="bg-slate-900 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-white">
                             <option value="THYAO">THYAO Grafiği</option>
+                            <option value="BTC">BTC (Bitcoin) Grafiği</option>
+                            <option value="ETH">ETH (Ethereum) Grafiği</option>
+                            <option value="SOL">SOL (Solana) Grafiği</option>
+                            <option value="ALTIN">Ons Altın Grafiği</option>
+                            <option value="BRENT">Brent Petrol Grafiği</option>
+                            <option value="USDTRY">USD/TRY Dolar Grafiği</option>
                             <option value="ASELS">ASELS Grafiği</option>
                             <option value="EREGL">EREGL Grafiği</option>
                             <option value="TUPRS">TUPRS Grafiği</option>
                             <option value="AKBNK">AKBNK Grafiği</option>
+                            <option value="BIMAS">BIMAS Grafiği</option>
+                            <option value="SASA">SASA Grafiği</option>
                             <option value="XU100">BIST 100 Grafiği</option>
+                            <option value="NVDA">NVDA (Nvidia) Grafiği</option>
                         </select>
                     </div>
 
@@ -462,53 +543,95 @@
 
                     <!-- Mode Selector Pills -->
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-slate-800/90 p-1.5 rounded-xl text-xs mb-4">
-                        <button onclick="toggleImportMode('live')" id="btn-mode-live" class="px-2 py-1.5 rounded-lg font-bold bg-emerald-600 text-white transition text-center">🖥️ Canlı Aç</button>
-                        <button onclick="toggleImportMode('bookmark')" id="btn-mode-bookmark" class="px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center">⚡ 1-Tık Yer İmi</button>
-                        <button onclick="toggleImportMode('auto')" id="btn-mode-auto" class="px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center">🔑 Şifreyle</button>
-                        <button onclick="toggleImportMode('bulk')" id="btn-mode-bulk" class="px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center">🍪 Toplu / Çerez</button>
+                        <button onclick="toggleImportMode('token')" id="btn-mode-token" class="px-2 py-1.5 rounded-lg font-bold bg-emerald-600 text-white transition text-center">🔑 Token İle</button>
+                        <button onclick="toggleImportMode('console')" id="btn-mode-console" class="px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center">⚡ 1-Tık F12</button>
+                        <button onclick="toggleImportMode('bulk')" id="btn-mode-bulk" class="px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center">🍪 Toplu Liste</button>
+                        <button onclick="toggleImportMode('auto')" id="btn-mode-auto" class="px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center">🤖 Şifreyle</button>
                     </div>
 
-                    <!-- MODE 1: Canlı Tarayıcı ile Giriş (En Kolayı) -->
-                    <div id="form-live-account" class="space-y-3">
+                    <!-- MODE 1: Token / auth_token ile Bağlama (En Güvenilir & %100 Çalışan Yöntem) -->
+                    <div id="form-token-account" class="space-y-3">
                         <div class="bg-emerald-950/40 border border-emerald-500/20 rounded-xl p-3 text-xs text-emerald-300 space-y-1">
-                            <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i> Sıfır Çerez Uğraşı & En Kolay Yöntem</p>
-                            <p class="text-slate-300 text-[11px]">Butona basınca ekranda gerçek bir tarayıcı açılır. Normal şekilde hesabınıza (Google, Mail veya Şifreyle) girin. Sistem başarıyı otomatik algılayıp oturumu anında kaydeder!</p>
+                            <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> %100 Çalışan Kesin Yöntem</p>
+                            <p class="text-slate-300 text-[11px]">x.com'da açık olan hesabınızın <code class="text-emerald-400 font-bold">auth_token</code> çerezini yapıştırın. Sistem hesabı anında bağlar ve doğrular.</p>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Hesap Kullanıcı Adı (İsteğe Bağlı):</label>
-                            <input type="text" id="acc-live-username" placeholder="Boş bırakırsanız otomatik algılanır" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 placeholder-slate-500" />
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">X Kullanıcı Adı (Zorunlu):</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2.5 text-xs text-slate-500 font-bold">@</span>
+                                <input type="text" id="acc-token-username" placeholder="Borsagenci" class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-8 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-medium" />
+                            </div>
                         </div>
-                        <button onclick="startInteractiveLogin()" id="btn-start-interactive" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-desktop"></i> 🖥️ Tarayıcıyı Aç & Giriş Yap
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">auth_token Çerezi (Zorunlu):</label>
+                            <input type="text" id="acc-token-auth" placeholder="70bcacd3a39523f1f1fdbff3411eaa63ce996e50..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">ct0 Çerezi (İsteğe Bağlı):</label>
+                            <input type="text" id="acc-token-ct0" placeholder="Boş bırakabilirsiniz, otomatik üretilir" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono placeholder-slate-600" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Hesap Rolü:</label>
+                            <select id="acc-token-role" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                                <option value="analyst">🏆 Ana Analist (Tweet Paylaşan Ana Hesap)</option>
+                                <option value="helper" selected>🤝 Kasma / Etkileşim Hesabı (RT, Beğeni, Yorum Yapan)</option>
+                            </select>
+                        </div>
+                        <button onclick="submitTokenAccount()" id="btn-submit-token" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 text-xs">
+                            <i class="fa-solid fa-link"></i> ⚡ Hesabı Hemen Bağla & Doğrula
                         </button>
+
+                        <!-- 10 Saniyelik auth_token Rehberi -->
+                        <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-3 text-[11px] text-slate-400 space-y-1.5 mt-2">
+                            <p class="font-bold text-slate-200 flex items-center gap-1.5">
+                                <i class="fa-solid fa-lightbulb text-amber-400"></i> auth_token 5 Saniyede Nasıl Alınır?
+                            </p>
+                            <p>1. Chrome/Edge'de <b>x.com</b> sekmesini açın.</p>
+                            <p>2. Klavyeden <b>F12</b>'ye basın (veya sağ tık -> İncele).</p>
+                            <p>3. Üstten <b>Application</b> (Uygulama) sekmesine tıklayın.</p>
+                            <p>4. Soldan <b>Cookies</b> -> <b>https://x.com</b>'u seçin.</p>
+                            <p>5. Listeden <b>auth_token</b> değerine çift tıklayıp kopyalayın.</p>
+                        </div>
                     </div>
 
-                    <!-- MODE 2: 1-Tık Yer İmi (Bookmarklet - Ultra Hızlı) -->
-                    <div id="form-bookmark-account" class="hidden space-y-3">
+                    <!-- MODE 2: 1-Tık F12 Konsol Kodu & Yer İmi -->
+                    <div id="form-console-account" class="hidden space-y-3">
                         <div class="bg-purple-950/40 border border-purple-500/20 rounded-xl p-3 text-xs text-purple-300 space-y-2">
-                            <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-bolt"></i> Tek Tıkla X Oturumu Aktarma</p>
-                            <p class="text-slate-300 text-[11px]">Aşağıdaki mor butonu tarayıcınızın <b>Yer İmleri Çubuğuna (Bookmarks)</b> sürükleyin. x.com açıkken yer imine tek tıkladığınızda o hesap bota anında eklenir!</p>
+                            <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-bolt"></i> 1 Tıkla Otomatik Aktarma</p>
+                            <p class="text-slate-300 text-[11px]">x.com açıkken F12 -> Console'a aşağıdaki kodu yapıştırıp Enter'a basın; hesabınız bu panele <b>anında</b> bağlanır!</p>
+                        </div>
+
+                        <div class="pt-1">
+                            <button onclick="copyDynamicConsoleCode()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition">
+                                <i class="fa-regular fa-copy"></i> 📋 1 Tıkla x.com F12 Konsol Kodunu Kopyala
+                            </button>
                         </div>
 
                         <div class="p-3 bg-slate-800/80 border border-dashed border-purple-500/50 rounded-xl text-center">
-                            <a id="bookmarklet-link" href='javascript:(function(){try{var c=document.cookie.split("; ");var g=function(n){var p=n+"=";var x=c.find(function(i){return i.indexOf(p)===0;});return x?x.substring(p.length):"";};var a=g("auth_token");var t=g("ct0");if(!a){alert("auth_token bulunamadı! Lütfen x.com üzerinde çalıştırın.");return;}var l=document.querySelector("a[data-testid=\"AppTabBar_Profile_Link\"]");var u=l?l.getAttribute("href").replace("/",""):prompt("Kullanıcı adınız (@ olmadan):","");if(!u)u="user_"+Date.now().toString().slice(-4);fetch("http://localhost:5000/api/accounts/quick_connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,auth_token:a,ct0:t,role:"helper"})}).then(function(r){return r.json();}).then(function(d){alert("🎉 @"+u+" hesabı bota bağlandı!");}).catch(function(e){alert("Bot paneline bağlanılamadı! http://localhost:5000 açık mı?");});}catch(e){alert("Hata: "+e);}})();' class="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2.5 rounded-lg text-xs shadow-md cursor-grab active:cursor-grabbing">
-                                <i class="fa-solid fa-bookmark"></i> 📌 X Oturumunu Bota Bağla (Sürükle)
+                            <a id="bookmarklet-dynamic-link" href="#" class="inline-flex items-center gap-2 bg-slate-700 hover:bg-purple-600 text-white font-bold px-4 py-2.5 rounded-lg text-xs shadow-md cursor-grab active:cursor-grabbing transition">
+                                <i class="fa-solid fa-bookmark text-purple-400"></i> 📌 Yer İmlerine Sürükle (Bookmarklet)
                             </a>
-                        </div>
-
-                        <div class="pt-2">
-                            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Veya X.com'da F12 Konsola Yapıştırın:</label>
-                            <button onclick="copyBookmarkletCode()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2 rounded-xl text-xs flex items-center justify-center gap-2">
-                                <i class="fa-regular fa-copy"></i> 📋 1 Tıkla Konsol Kodunu Kopyala
-                            </button>
                         </div>
                     </div>
 
-                    <!-- MODE 3: Şifre ile Otomatik Giriş -->
+                    <!-- MODE 3: Çerez & 100'lü Toplu İçe Aktarma -->
+                    <div id="form-bulk-account" class="hidden space-y-3">
+                        <div class="bg-amber-950/40 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300 space-y-1">
+                            <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-cookie-bite"></i> Cookie-Editor JSON & 100'lü Toplu Liste</p>
+                            <p class="text-slate-300 text-[11px]">Cookie-Editor eklentisinden <b>"Export JSON"</b> çıktısını direkt buraya yapıştırabilir veya her satıra <code class="text-amber-400">kullanici:auth_token:ct0</code> yazabilirsiniz.</p>
+                        </div>
+                        <textarea id="acc-bulk-text" rows="7" placeholder="Cookie-Editor JSON çıktısı ya da:&#10;hesap1:70bcacd3a...:53ae1c...&#10;hesap2:88f1ba9c0...:11d0ab...&#10;veya sadece auth_token çerezi..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"></textarea>
+                        
+                        <button onclick="bulkImportAccounts()" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Toplu Hesapları Sisteme Aktar
+                        </button>
+                    </div>
+
+                    <!-- MODE 4: Şifre ile Otomatik Giriş -->
                     <div id="form-auto-account" class="hidden space-y-3">
                         <div class="bg-blue-950/40 border border-blue-500/20 rounded-xl p-3 text-xs text-blue-300">
                             <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-key"></i> Otomatik Şifreli Giriş</p>
-                            <p class="text-slate-300 text-[11px] mt-1">Kullanıcı adı ve şifrenizi girin; bot arka planda tarayıcıyı açıp giriş yapar ve oturumunuzu otomatik kaydeder.</p>
+                            <p class="text-slate-300 text-[11px] mt-1">Kullanıcı adı ve şifrenizi girin; bot arka planda tarayıcıyı açıp giriş yapmayı dener. (Bulut sunucularda 2FA sorabilir, Token yöntemi önerilir).</p>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 mb-1">Kullanıcı Adı veya E-posta:</label>
@@ -524,19 +647,6 @@
                         </div>
                         <button onclick="startAutoLogin()" id="btn-start-autologin" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
                             <i class="fa-solid fa-arrow-right-to-bracket"></i> 🤖 Otomatik Giriş Yap & Bağla
-                        </button>
-                    </div>
-
-                    <!-- MODE 4: Çerez & 100'lü Toplu İçe Aktarma -->
-                    <div id="form-bulk-account" class="hidden space-y-3">
-                        <div class="bg-amber-950/40 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300 space-y-1">
-                            <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-cookie-bite"></i> Cookie-Editor JSON & 100'lü Toplu Liste</p>
-                            <p class="text-slate-300 text-[11px]">Cookie-Editor eklentisinden <b>"Export JSON"</b> çıktısını direkt buraya yapıştırabilir veya her satıra <code class="text-amber-400">kullanici:auth_token:ct0</code> yazabilirsiniz.</p>
-                        </div>
-                        <textarea id="acc-bulk-text" rows="7" placeholder="Cookie-Editor JSON çıktısı ya da:&#10;hesap1:70bcacd3a...:53ae1c...&#10;hesap2:88f1ba9c0...:11d0ab...&#10;veya sadece auth_token çerezi..." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"></textarea>
-                        
-                        <button onclick="bulkImportAccounts()" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-cloud-arrow-up"></i> Toplu Hesapları Sisteme Aktar
                         </button>
                     </div>
                 </div>
@@ -742,16 +852,28 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Hisse Seçimi:</label>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Piyasa & Varlık Tercihi:</label>
                             <select id="sched-stock-select" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                                <option value="auto_rotate" selected>🔄 BIST 100 Hisseleri Dönüşümlü (THYAO, ASELS, EREGL...)</option>
-                                <option value="THYAO">Sabit THYAO</option>
-                                <option value="ASELS">Sabit ASELS</option>
-                                <option value="EREGL">Sabit EREGL</option>
-                                <option value="TUPRS">Sabit TUPRS</option>
-                                <option value="AKBNK">Sabit AKBNK</option>
-                                <option value="BIMAS">Sabit BIMAS</option>
-                                <option value="XU100">Sabit BIST 100 Endeksi</option>
+                                <option value="auto_rotate_all" selected>🔄 Tüm Piyasalar Karışık (BIST, Kripto, Altın, Döviz)</option>
+                                <option value="auto_rotate_bist">📈 Sadece BIST 100 Hisseleri Dönüşümlü</option>
+                                <option value="auto_rotate_crypto">🔥 Sadece Kripto / Coinler Dönüşümlü (BTC, ETH, SOL...)</option>
+                                <option value="auto_rotate_commodities">🪙 Sadece Emtia & Döviz (Altın, Gümüş, Dolar...)</option>
+                                <optgroup label="Sabit Seçimler">
+                                    <option value="BTC">Sabit Bitcoin (#BTC)</option>
+                                    <option value="ETH">Sabit Ethereum (#ETH)</option>
+                                    <option value="SOL">Sabit Solana (#SOL)</option>
+                                    <option value="ALTIN">Sabit Ons Altın (#ALTIN)</option>
+                                    <option value="BRENT">Sabit Brent Petrol (#BRENT)</option>
+                                    <option value="USDTRY">Sabit Dolar / TL (#USDTRY)</option>
+                                    <option value="THYAO">Sabit THYAO</option>
+                                    <option value="ASELS">Sabit ASELS</option>
+                                    <option value="EREGL">Sabit EREGL</option>
+                                    <option value="TUPRS">Sabit TUPRS</option>
+                                    <option value="AKBNK">Sabit AKBNK</option>
+                                    <option value="BIMAS">Sabit BIMAS</option>
+                                    <option value="XU100">Sabit BIST 100 Endeksi</option>
+                                    <option value="SASA">Sabit SASA</option>
+                                </optgroup>
                             </select>
                         </div>
                         <div>
@@ -1081,21 +1203,49 @@
             }
         }
 
-        async function loadChartAnalysis() {
-            const sym = document.getElementById('chart-symbol-select').value;
+        async function loadCustomSymbolChart() {
+            const input = document.getElementById('chart-custom-symbol-input');
+            const sym = (input.value || '').trim().toUpperCase();
+            if (!sym) {
+                showToast("Lütfen bir sembol veya hisse kodu yazın (örn: MGROS, SOL, ALTIN)...", true);
+                return;
+            }
+            const select = document.getElementById('chart-symbol-select');
+            let found = false;
+            for (let i = 0; i < select.options.length; i++) {
+                if (select.options[i].value.toUpperCase() === sym) {
+                    select.selectedIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                const opt = document.createElement('option');
+                opt.value = sym;
+                opt.textContent = `🔍 ${sym} (Özel Sembol)`;
+                opt.selected = true;
+                select.appendChild(opt);
+            }
+            showToast(`${sym} grafiği ve teknik analizi yükleniyor...`);
+            await loadChartAnalysis(sym);
+        }
+
+        async function loadChartAnalysis(symOverride) {
+            const sym = symOverride || document.getElementById('chart-symbol-select').value;
             const img = document.getElementById('chart-img');
             const loading = document.getElementById('chart-loading');
             img.classList.add('hidden');
             loading.classList.remove('hidden');
 
             try {
-                const res = await fetch(`/api/chart/${sym}`);
+                const res = await fetch(`/api/chart/${encodeURIComponent(sym)}`);
                 const data = await res.json();
+                const unit = data.currency_unit || 'TL';
 
-                document.getElementById('ind-price').textContent = `${data.current_price || '--'} TL`;
+                document.getElementById('ind-price').textContent = `${data.current_price !== undefined ? data.current_price.toLocaleString() : '--'} ${unit}`;
                 document.getElementById('ind-rsi').textContent = data.rsi || '--';
-                document.getElementById('ind-emas').textContent = `${data.ema9 || '--'} / ${data.ema21 || '--'} TL`;
-                document.getElementById('ind-sr').textContent = `${data.support || '--'} / ${data.resistance || '--'} TL`;
+                document.getElementById('ind-emas').textContent = `${data.ema9 !== undefined ? data.ema9.toLocaleString() : '--'} / ${data.ema21 !== undefined ? data.ema21.toLocaleString() : '--'} ${unit}`;
+                document.getElementById('ind-sr').textContent = `${data.support !== undefined ? data.support.toLocaleString() : '--'} / ${data.resistance !== undefined ? data.resistance.toLocaleString() : '--'} ${unit}`;
                 document.getElementById('ind-trend').textContent = data.trend || 'Nötr';
 
                 if (data.chart_url) {
@@ -1606,112 +1756,88 @@
 
         function toggleImportMode(mode) {
             const forms = {
-                live: document.getElementById('form-live-account'),
-                bookmark: document.getElementById('form-bookmark-account'),
-                auto: document.getElementById('form-auto-account'),
-                bulk: document.getElementById('form-bulk-account')
+                token: document.getElementById('form-token-account'),
+                console: document.getElementById('form-console-account'),
+                bulk: document.getElementById('form-bulk-account'),
+                auto: document.getElementById('form-auto-account')
             };
             const buttons = {
-                live: document.getElementById('btn-mode-live'),
-                bookmark: document.getElementById('btn-mode-bookmark'),
-                auto: document.getElementById('btn-mode-auto'),
-                bulk: document.getElementById('btn-mode-bulk')
+                token: document.getElementById('btn-mode-token'),
+                console: document.getElementById('btn-mode-console'),
+                bulk: document.getElementById('btn-mode-bulk'),
+                auto: document.getElementById('btn-mode-auto')
             };
 
             for (const key in forms) {
-                if (key === mode) {
-                    forms[key].classList.remove('hidden');
-                    buttons[key].className = 'px-2 py-1.5 rounded-lg font-bold bg-emerald-600 text-white transition text-center';
-                } else {
-                    forms[key].classList.add('hidden');
-                    buttons[key].className = 'px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center';
+                if (forms[key]) {
+                    if (key === mode) {
+                        forms[key].classList.remove('hidden');
+                        if (buttons[key]) buttons[key].className = 'px-2 py-1.5 rounded-lg font-bold bg-emerald-600 text-white transition text-center';
+                    } else {
+                        forms[key].classList.add('hidden');
+                        if (buttons[key]) buttons[key].className = 'px-2 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition text-center';
+                    }
                 }
             }
         }
 
-        async function startInteractiveLogin() {
-            const btn = document.getElementById('btn-start-interactive');
-            const username = document.getElementById('acc-live-username').value.trim();
-            const originalHtml = btn.innerHTML;
+        async function submitTokenAccount() {
+            const uname = document.getElementById('acc-token-username').value.trim().replace(/^@/, '');
+            const token = document.getElementById('acc-token-auth').value.trim();
+            const ct0 = document.getElementById('acc-token-ct0').value.trim();
+            const role = document.getElementById('acc-token-role').value;
+            const btn = document.getElementById('btn-submit-token');
 
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Tarayıcı Açıldı, Giriş Yapmanız Bekleniyor...';
-            showToast("🖥️ Canlı tarayıcı açıldı! Lütfen açılan pencerede X hesabınıza giriş yapın.");
-
-            try {
-                const res = await fetch('/api/accounts/interactive_login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({username: username})
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast(data.message);
-                    document.getElementById('acc-live-username').value = '';
-                    fetchStatus();
-                } else {
-                    showToast(data.error || "Giriş tamamlanamadı", true);
-                }
-            } catch (e) {
-                showToast("Canlı giriş başlatılamadı", true);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-            }
-        }
-
-        async function startAutoLogin() {
-            const btn = document.getElementById('btn-start-autologin');
-            const user = document.getElementById('acc-auto-user').value.trim();
-            const pass = document.getElementById('acc-auto-pass').value.trim();
-            const verify = document.getElementById('acc-auto-verify').value.trim();
-
-            if (!user || !pass) {
-                showToast("Kullanıcı adı ve şifre zorunludur", true);
+            if (!uname || !token) {
+                showToast("Lütfen Kullanıcı Adı ve auth_token giriniz!", true);
                 return;
             }
 
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Otomatik Giriş Yapılıyor...';
-            showToast(`🤖 @${user} hesabına otomatik giriş deneniyor...`);
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Hesaba Bağlanılıyor...';
+            showToast(`@${uname} hesabı doğrulanıyor ve kaydediliyor...`);
 
             try {
-                const res = await fetch('/api/accounts/auto_login', {
+                const res = await fetch('/api/accounts/add', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        username_or_email: user,
-                        password: pass,
-                        verify_credential: verify,
-                        role: 'helper'
-                    })
+                    body: JSON.stringify({username: uname, auth_token: token, ct0: ct0, role: role})
                 });
                 const data = await res.json();
                 if (data.success) {
-                    showToast(data.message);
-                    document.getElementById('acc-auto-user').value = '';
-                    document.getElementById('acc-auto-pass').value = '';
-                    document.getElementById('acc-auto-verify').value = '';
+                    showToast(`🎉 @${uname} başarıyla bağlandı ve oturum aktif!`);
+                    document.getElementById('acc-token-username').value = '';
+                    document.getElementById('acc-token-auth').value = '';
+                    document.getElementById('acc-token-ct0').value = '';
                     fetchStatus();
                 } else {
-                    showToast(data.error || "Giriş başarısız", true);
+                    showToast(data.error || "Hesap eklenemedi", true);
                 }
             } catch (e) {
-                showToast("Otomatik giriş servisi hatası", true);
+                showToast("Bağlantı hatası: " + e, true);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             }
         }
 
-        function copyBookmarkletCode() {
-            const code = 'javascript:(function(){try{var c=document.cookie.split("; ");var g=function(n){var p=n+"=";var x=c.find(function(i){return i.indexOf(p)===0;});return x?x.substring(p.length):"";};var a=g("auth_token");var t=g("ct0");if(!a){alert("auth_token bulunamadı! Lütfen x.com üzerinde çalıştırın.");return;}var l=document.querySelector(\'a[data-testid="AppTabBar_Profile_Link"]\');var u=l?l.getAttribute("href").replace("/",""):prompt("Kullanıcı adınız (@ olmadan):","");if(!u)u="user_"+Date.now().toString().slice(-4);fetch("http://localhost:5000/api/accounts/quick_connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,auth_token:a,ct0:t,role:"helper"})}).then(function(r){return r.json();}).then(function(d){alert("🎉 @"+u+" hesabı bota bağlandı!");}).catch(function(e){alert("Bot paneline bağlanılamadı! http://localhost:5000 açık mı?");});}catch(e){alert("Hata: "+e);}})();';
+        function copyDynamicConsoleCode() {
+            const origin = window.location.origin;
+            const code = `javascript:(function(){try{var c=document.cookie.split("; ");var g=function(n){var p=n+"=";var x=c.find(function(i){return i.indexOf(p)===0;});return x?x.substring(p.length):"";};var a=g("auth_token");var t=g("ct0");if(!a){alert("auth_token bulunamadı! Lütfen x.com sekmesinde çalıştırın.");return;}var l=document.querySelector('a[data-testid="AppTabBar_Profile_Link"]');var u=l?l.getAttribute("href").replace("/",""):prompt("Kullanıcı adınız (@ olmadan):","");if(!u)return;fetch("${origin}/api/accounts/quick_connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,auth_token:a,ct0:t,role:"helper"})}).then(function(r){return r.json();}).then(function(d){alert("🎉 @"+u+" hesabı başarıyla bota bağlandı!");}).catch(function(e){alert("Bot paneline bağlanılamadı: "+e);});}catch(e){alert("Hata: "+e);}})();`;
             navigator.clipboard.writeText(code).then(() => {
-                showToast("📋 Konsol kodu kopyalandı! Twitter sekmesinde F12 -> Console -> Yapıştır -> Enter yapın.");
+                showToast("📋 F12 Konsol Kodu Kopyalandı! x.com açıkken F12 -> Console -> Yapıştır -> Enter yapın.");
             }).catch(() => {
-                prompt("Aşağıdaki kodu kopyalayıp x.com açıkken F12 Console'a yapıştırın:", code);
+                prompt("Aşağıdaki kodu x.com açıkken F12 Console'a yapıştırın:", code);
             });
+        }
+
+        function updateBookmarkletLink() {
+            const link = document.getElementById('bookmarklet-dynamic-link');
+            if (link) {
+                const origin = window.location.origin;
+                link.href = `javascript:(function(){try{var c=document.cookie.split("; ");var g=function(n){var p=n+"=";var x=c.find(function(i){return i.indexOf(p)===0;});return x?x.substring(p.length):"";};var a=g("auth_token");var t=g("ct0");if(!a){alert("auth_token bulunamadı! Lütfen x.com sekmesinde çalıştırın.");return;}var l=document.querySelector('a[data-testid="AppTabBar_Profile_Link"]');var u=l?l.getAttribute("href").replace("/",""):prompt("Kullanıcı adınız (@ olmadan):","");if(!u)return;fetch("${origin}/api/accounts/quick_connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,auth_token:a,ct0:t,role:"helper"})}).then(function(r){return r.json();}).then(function(d){alert("🎉 @"+u+" hesabı başarıyla bota bağlandı!");}).catch(function(e){alert("Bot paneline bağlanılamadı: "+e);});}catch(e){alert("Hata: "+e);}})();`;
+            }
         }
 
         async function bulkImportAccounts() {
@@ -1869,6 +1995,7 @@
         function loadAllData() {
             const icon = document.getElementById('refresh-icon');
             icon.classList.add('fa-spin');
+            updateBookmarkletLink();
             Promise.all([fetchStatus(), fetchMarket()]).finally(() => {
                 setTimeout(() => icon.classList.remove('fa-spin'), 600);
             });

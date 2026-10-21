@@ -321,7 +321,20 @@ def get_ai_generator() -> BISTContentGenerator:
 
 # ----------------- ADVANCED SCHEDULER & AUTOPILOT ENGINE -----------------
 
-POPULAR_STOCKS = ["THYAO", "ASELS", "EREGL", "TUPRS", "AKBNK", "BIMAS", "XU100", "SASA"]
+POPULAR_STOCKS = [
+    # BIST Hisseleri
+    "THYAO", "ASELS", "EREGL", "TUPRS", "AKBNK", "BIMAS", "XU100", "SASA", "KCHOL", "GARAN", "ISCTR", "SISE", "FROTO", "PGSUS",
+    # Kripto / Coinler
+    "BTC", "ETH", "SOL", "XRP", "DOGE", "AVAX", "BNB", "PEPE", "SUI",
+    # Emtia & Değerli Maden
+    "ALTIN", "GUMUS", "BRENT",
+    # Döviz & Forex
+    "USDTRY", "EURTRY", "EURUSD"
+]
+CRYPTO_STOCKS = ["BTC", "ETH", "SOL", "XRP", "DOGE", "AVAX", "BNB", "PEPE", "SUI"]
+BIST_STOCKS = ["THYAO", "ASELS", "EREGL", "TUPRS", "AKBNK", "BIMAS", "XU100", "SASA", "KCHOL", "GARAN", "ISCTR", "SISE", "FROTO", "PGSUS"]
+COMMODITY_STOCKS = ["ALTIN", "GUMUS", "BRENT", "USDTRY", "EURTRY", "EURUSD"]
+
 PERSONAS = ["kurumsal_analist", "agresif_trader", "temkinli_yatirimci", "sevecen_dost"]
 rotation_counter = 0
 
@@ -342,10 +355,7 @@ def get_telegram_bridge() -> TelegramBridgeManager:
 def execute_scheduled_task(source: str = "Zamanlayıcı") -> dict:
     """
     Executes automated chart generation, AI analysis, tweet posting and cross-boosting.
-    Supports smart mix:
-    - Candlestick chart analysis (with photo)
-    - Stock focus market insight (without photo)
-    - Friendly community tweets ('Günaydın millet', 'Seans kapanışı', 'Borsada sabır') (without photo)
+    Supports multi-asset smart mix (BIST, Crypto, Gold, Oil, Forex).
     """
     global rotation_counter
     ensure_sessions_restored()
@@ -363,10 +373,16 @@ def execute_scheduled_task(source: str = "Zamanlayıcı") -> dict:
         log_event(f"[{source}] @{analyst} için oturum hazır değil.", "error")
         return {"success": False, "error": f"@{analyst} için oturum hazır değil"}
 
-    # 1. Select Stock Symbol
+    # 1. Select Asset Symbol
     stock_sym = sched.get("stock_symbol", "auto_rotate")
-    if stock_sym == "auto_rotate" or not stock_sym:
+    if stock_sym in ("auto_rotate", "auto_rotate_all") or not stock_sym:
         stock_sym = POPULAR_STOCKS[rotation_counter % len(POPULAR_STOCKS)]
+    elif stock_sym == "auto_rotate_crypto":
+        stock_sym = CRYPTO_STOCKS[rotation_counter % len(CRYPTO_STOCKS)]
+    elif stock_sym == "auto_rotate_bist":
+        stock_sym = BIST_STOCKS[rotation_counter % len(BIST_STOCKS)]
+    elif stock_sym == "auto_rotate_commodities":
+        stock_sym = COMMODITY_STOCKS[rotation_counter % len(COMMODITY_STOCKS)]
 
     # 2. Select Persona
     persona_key = sched.get("persona", "rotate")
