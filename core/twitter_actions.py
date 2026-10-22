@@ -3,10 +3,21 @@ Twitter Actions Executor via Playwright (No API required)
 Supports Tweet, Like, Retweet, Reply, and Feed Interaction.
 """
 
+import os
 import time
 import random
 from typing import Optional, Dict, Any
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
+
+def safe_print(msg: str):
+    """Safely prints message avoiding unicode terminal crashes"""
+    try:
+        print(msg)
+    except Exception:
+        try:
+            print(msg.encode("ascii", errors="replace").decode("ascii"))
+        except Exception:
+            pass
 
 def human_delay(min_sec: float = 2.0, max_sec: float = 5.0):
     """Sleep with random jitter to simulate human interaction"""
@@ -122,7 +133,7 @@ class TwitterActions:
                 return {"success": False, "error": "Tweet gönder butonu devre dışı (karakter sınırı veya boş metin)"}
 
             post_button.click()
-            print("[✓] Gönder butonuna tıklandı, tweet başarıyla paylaşıldı!")
+            safe_print("[OK] Gonder butonuna tiklandi, tweet basariyla paylasildi!")
             human_delay(3, 6)
 
             return {"success": True, "text": text, "has_media": bool(media_path)}
@@ -136,20 +147,20 @@ class TwitterActions:
         Likes a tweet given its URL.
         """
         try:
-            print(f"[+] Beğeniliyor: {tweet_url}")
+            safe_print(f"[+] Begeniliyor: {tweet_url}")
             self.page.goto(tweet_url, wait_until="domcontentloaded", timeout=25000)
             human_delay(2, 4)
 
             # Check if already liked
             if self.page.locator("button[data-testid='unlike']").count() > 0:
-                print("[i] Tweet zaten beğenilmiş.")
+                safe_print("[i] Tweet zaten begenilmis.")
                 return {"success": True, "already_liked": True}
 
             like_btn = self.page.locator("button[data-testid='like']").first
             like_btn.wait_for(state="visible", timeout=12000)
             like_btn.click()
             human_delay(1.5, 3)
-            print("[✓] Tweet başarıyla beğenildi!")
+            safe_print("[OK] Tweet basariyla begenildi!")
             return {"success": True, "already_liked": False}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -159,13 +170,13 @@ class TwitterActions:
         Retweets (reposts) a tweet given its URL.
         """
         try:
-            print(f"[+] Retweet yapılıyor: {tweet_url}")
+            safe_print(f"[+] Retweet yapiliyor: {tweet_url}")
             self.page.goto(tweet_url, wait_until="domcontentloaded", timeout=25000)
             human_delay(2, 4)
 
             # Check if already retweeted (unretweet button)
             if self.page.locator("button[data-testid='unretweet']").count() > 0:
-                print("[i] Tweet zaten retweet edilmiş.")
+                safe_print("[i] Tweet zaten retweet edilmis.")
                 return {"success": True, "already_retweeted": True}
 
             retweet_btn = self.page.locator("button[data-testid='retweet']").first
@@ -178,7 +189,7 @@ class TwitterActions:
             confirm_btn.wait_for(state="visible", timeout=6000)
             confirm_btn.click()
             human_delay(1.5, 3)
-            print("[✓] Tweet başarıyla retweet edildi!")
+            safe_print("[OK] Tweet basariyla retweet edildi!")
             return {"success": True, "already_retweeted": False}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -188,7 +199,7 @@ class TwitterActions:
         Replies (comments) to a tweet given its URL.
         """
         try:
-            print(f"[+] Yorum yazılıyor: {tweet_url} -> '{reply_text[:40]}...'")
+            safe_print(f"[+] Yorum yaziliyor: {tweet_url} -> '{reply_text[:40]}...'")
             self.page.goto(tweet_url, wait_until="domcontentloaded", timeout=25000)
             human_delay(2, 4)
 
@@ -213,7 +224,7 @@ class TwitterActions:
             send_btn.wait_for(state="visible", timeout=6000)
             send_btn.click()
             human_delay(2, 4)
-            print("[✓] Yorum başarıyla gönderildi!")
+            safe_print("[OK] Yorum basariyla gonderildi!")
             return {"success": True, "reply_text": reply_text}
         except Exception as e:
             return {"success": False, "error": str(e)}

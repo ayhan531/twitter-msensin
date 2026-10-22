@@ -104,6 +104,9 @@
             <button onclick="toggleTab('telegram')" id="tab-btn-telegram" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
                 <i class="fa-brands fa-telegram text-sky-400"></i> Telegram Köprüsü
             </button>
+            <button onclick="toggleTab('growth')" id="tab-btn-growth" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
+                <i class="fa-solid fa-seedling text-emerald-400"></i> Büyüme Motoru
+            </button>
             <button onclick="toggleTab('logs')" id="tab-btn-logs" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition flex items-center gap-2">
                 <i class="fa-solid fa-terminal"></i> Loglar
             </button>
@@ -994,7 +997,105 @@
             </div>
         </section>
 
-        <!-- ================= TAB 8: SİSTEM LOGLARI ================= -->
+        <!-- ================= TAB 8: BÜYÜME MOTORU ================= -->
+        <section id="tab-growth" class="tab-content hidden space-y-6">
+            <div class="bg-gradient-to-br from-slate-900 to-emerald-950/30 border border-slate-800 p-6 rounded-2xl shadow-xl max-w-4xl space-y-6">
+                <!-- Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div>
+                        <h3 class="font-bold text-xl text-white flex items-center gap-2">
+                            <i class="fa-solid fa-seedling text-emerald-400"></i> Organik Büyüme Motoru
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Hedef: <b class="text-emerald-400">1000 Organik Takipçi</b> — Finans influencer'larının takipçilerini takip eder, ilgili hashtaglerde beğeni yapar. Her döngü ~60-90 dakikada bir çalışır.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 self-start sm:self-auto">
+                        <span class="text-xs text-slate-400">Oto Pilot</span>
+                        <label class="relative inline-flex items-center cursor-pointer" onclick="toggleGrowthAuto()">
+                            <input type="checkbox" id="growth-auto-switch" class="sr-only peer">
+                            <div class="w-12 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 text-center">
+                        <div class="text-2xl font-bold text-emerald-400" id="growth-stat-followed">-</div>
+                        <div class="text-xs text-slate-400 mt-1">Takip Edildi</div>
+                    </div>
+                    <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 text-center">
+                        <div class="text-2xl font-bold text-sky-400" id="growth-stat-liked">-</div>
+                        <div class="text-xs text-slate-400 mt-1">Beğenildi</div>
+                    </div>
+                    <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 text-center">
+                        <div class="text-2xl font-bold text-violet-400" id="growth-stat-cycles">-</div>
+                        <div class="text-xs text-slate-400 mt-1">Döngü</div>
+                    </div>
+                    <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4 text-center">
+                        <div class="text-2xl font-bold text-amber-400" id="growth-stat-running">-</div>
+                        <div class="text-xs text-slate-400 mt-1">Durum</div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div>
+                    <div class="flex justify-between text-xs mb-2">
+                        <span class="text-slate-400">Takipçi Hedefi</span>
+                        <span class="text-emerald-400 font-bold" id="growth-progress-label">0 / 1000</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-3">
+                        <div id="growth-progress-bar" class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Son Aktivite -->
+                <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 space-y-2">
+                    <h4 class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-clock text-emerald-400"></i> Son Aktivite
+                    </h4>
+                    <div id="growth-last-activity" class="text-xs text-slate-400 font-mono min-h-[40px]">
+                        Yükleniyor...
+                    </div>
+                </div>
+
+                <!-- Hedef Hesaplar -->
+                <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 space-y-2">
+                    <h4 class="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-crosshairs text-amber-400"></i> Hedef Finans Hesapları
+                    </h4>
+                    <div class="flex flex-wrap gap-2" id="growth-target-list">
+                        <span class="bg-slate-700/60 text-slate-300 text-xs px-2 py-1 rounded-lg">@e507</span>
+                        <span class="bg-slate-700/60 text-slate-300 text-xs px-2 py-1 rounded-lg">@mert_basaran</span>
+                        <span class="bg-slate-700/60 text-slate-300 text-xs px-2 py-1 rounded-lg">@TuncayTurssucu</span>
+                        <span class="bg-slate-700/60 text-slate-300 text-xs px-2 py-1 rounded-lg">@ali_persembe</span>
+                        <span class="bg-slate-700/60 text-slate-300 text-xs px-2 py-1 rounded-lg">@kriptoemre</span>
+                        <span class="bg-slate-700/60 text-slate-300 text-xs px-2 py-1 rounded-lg">@uzmancoin</span>
+                        <span class="bg-slate-700/60 text-slate-300 text-xs px-2 py-1 rounded-lg">@AhmetMergen</span>
+                        <span class="bg-slate-700/60 text-slate-300 text-xs px-2 py-1 rounded-lg">@stratejist_dr</span>
+                    </div>
+                </div>
+
+                <!-- Butonlar -->
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button type="button" onclick="triggerGrowthNow()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40">
+                        <i class="fa-solid fa-rocket"></i> Şimdi Büyüme Döngüsü Başlat
+                    </button>
+                    <button type="button" onclick="fetchGrowthStatus()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold px-5 py-3.5 rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate"></i> Yenile
+                    </button>
+                </div>
+
+                <!-- Info box -->
+                <div class="bg-slate-800/40 border border-emerald-800/40 rounded-xl p-4 text-xs text-slate-400 space-y-1">
+                    <p><i class="fa-solid fa-circle-info text-emerald-400 mr-1"></i><b class="text-slate-300">Nasıl çalışır?</b> Bot finans influencer'larının takipçilerini hedef alır. Her döngüde 5-10 takip + 10-20 beğeni yapar, Twitter API sınırlarına takılmamak için rasgele bekleme süreleri ekler.</p>
+                    <p><i class="fa-solid fa-shield-halved text-amber-400 mr-1"></i><b class="text-slate-300">Güvenlik:</b> Günlük ~50-80 takip, ~100-150 beğeni limiti dahilinde çalışır. Hesap askıya alınmaz.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 9: SİSTEM LOGLARI ================= -->
         <section id="tab-logs" class="tab-content hidden space-y-4">
             <div class="flex justify-between items-center">
                 <h3 class="font-bold text-lg text-white flex items-center gap-2">
@@ -1058,6 +1159,7 @@
             if (tabName === 'comments') fetchCommentSettings();
             if (tabName === 'autopilot') fetchSchedulerSettings();
             if (tabName === 'telegram') fetchTelegramSettings();
+            if (tabName === 'growth') fetchGrowthStatus();
             if (tabName === 'logs') fetchLogs();
         }
 
@@ -1602,6 +1704,71 @@
                 }
             } catch (e) {
                 showToast("Tetikleme başarısız", true);
+            }
+        }
+
+        // ================= GROWTH ENGINE JAVASCRIPT =================
+
+        async function fetchGrowthStatus() {
+            try {
+                const res = await fetch('/api/growth/status');
+                const data = await res.json();
+                document.getElementById('growth-stat-followed').textContent = data.total_followed ?? 0;
+                document.getElementById('growth-stat-liked').textContent = data.total_liked ?? 0;
+                document.getElementById('growth-stat-cycles').textContent = data.cycles_run ?? 0;
+                const running = data.is_running;
+                const autoOn = data.auto_enabled;
+                document.getElementById('growth-stat-running').textContent = running ? '🟢 Aktif' : (autoOn ? '⏳ Bekliyor' : '⚫ Kapalı');
+                document.getElementById('growth-auto-switch').checked = autoOn;
+                // Progress bar
+                const followers = data.current_followers ?? 0;
+                const target = 1000;
+                const pct = Math.min(100, Math.round((followers / target) * 100));
+                document.getElementById('growth-progress-bar').style.width = pct + '%';
+                document.getElementById('growth-progress-label').textContent = `${followers} / ${target}`;
+                // Son aktivite
+                const act = data.last_activity ?? 'Henüz aktivite yok.';
+                document.getElementById('growth-last-activity').textContent = act;
+            } catch(e) {
+                document.getElementById('growth-last-activity').textContent = 'Bağlantı hatası: ' + e.message;
+            }
+        }
+
+        async function triggerGrowthNow() {
+            const btn = event.currentTarget;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Başlatılıyor...';
+            try {
+                const res = await fetch('/api/growth/trigger_now', {method: 'POST'});
+                const data = await res.json();
+                if (data.success || data.status === 'started') {
+                    showToast('✅ Büyüme döngüsü başlatıldı!', false);
+                    setTimeout(fetchGrowthStatus, 3000);
+                } else {
+                    showToast('⚠️ ' + (data.error || data.message || 'Hata'), true);
+                }
+            } catch(e) {
+                showToast('❌ Bağlantı hatası: ' + e.message, true);
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Şimdi Büyüme Döngüsü Başlat';
+        }
+
+        async function toggleGrowthAuto() {
+            try {
+                const sw = document.getElementById('growth-auto-switch');
+                const newState = sw.checked;
+                const res = await fetch('/api/growth/toggle_auto', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled: newState})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(newState ? '✅ Büyüme Otopilotu Açıldı' : '⏸️ Büyüme Otopilotu Kapatıldı', false);
+                }
+            } catch(e) {
+                showToast('❌ Hata: ' + e.message, true);
             }
         }
 

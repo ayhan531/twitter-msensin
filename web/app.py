@@ -37,6 +37,7 @@ from core.engagement_pod import EngagementPodManager
 from core.twitter_actions import TwitterActions
 from core.watchlist_monitor import WatchlistMonitor
 from core.telegram_bridge import TelegramBridgeManager
+from core.growth_engine import OrganicGrowthEngine
 
 def get_config_file_path() -> Path:
     """Detects persistent disk mount paths on Render or returns local config file"""
@@ -172,6 +173,13 @@ def parse_env_accounts() -> List[Dict[str, Any]]:
             parsed.append({"username": uname, "auth_token": token, "ct0": ct0, "role": role})
     return parsed
 
+DEFAULT_PRIMARY_ACCOUNT = {
+    "username": "Borsagenci",
+    "role": "analyst",
+    "auth_token": "70bcacd3a39523f1f1fdbff3411eaa63ce996e50",
+    "ct0": "53ae1c20158dc02db9fe4db6a02a32e62d0bdf2890c4ef440b7bd58041244f3e953399efbda013a2808e0ebe1c0bd377610d0179ce0f371775fbb19c395f628422f55c8323c40acfc13b6148cc2da459"
+}
+
 def get_config() -> dict:
     global CONFIG_FILE
     CONFIG_FILE = get_config_file_path()
@@ -186,11 +194,16 @@ def get_config() -> dict:
             
     if not cfg:
         cfg = {
-            "accounts": [],
+            "accounts": [DEFAULT_PRIMARY_ACCOUNT],
             "ai_settings": {},
             "autopilot": {"enabled": False, "interval_minutes": 60},
             "scheduler": DEFAULT_SCHEDULER
         }
+
+    # Ensure Borsagenci is ALWAYS present and protected as primary account
+    accounts = cfg.setdefault("accounts", [])
+    if not any(a.get("username", "").lower() == "borsagenci" for a in accounts):
+        accounts.insert(0, DEFAULT_PRIMARY_ACCOUNT)
 
     if "scheduler" not in cfg:
         cfg["scheduler"] = DEFAULT_SCHEDULER
@@ -1348,6 +1361,99 @@ async def toggle_autopilot(payload: AutopilotTogglePayload):
 @app.get("/api/logs")
 async def get_logs():
     return {"logs": activity_logs}
+
+# ----------------- ORGANIC GROWTH & 1000 FOLLOWER ENGINE -----------------
+
+growth_engine = None
+
+def get_growth_engine() -> OrganicGrowthEngine:
+    global growth_engine
+    if not growth_engine:
+        growth_engine = OrganicGrowthEngine(browser_mgr, get_ai_generator())
+    return growth_engine
+
+growth_worker_running = False
+growth_worker_thread = None
+
+def growth_background_worker():
+    global growth_worker_running
+    log_event("🚀 1000 Organik Takipçi Kasma Motoru (7/24) devrede!", "success")
+    while growth_worker_running:
+        try:
+            cfg = get_config()
+            accounts = cfg.get("accounts", [])
+            analyst = next((a.get("username") for a in accounts if a.get("role") == "analyst"), "Borsagenci")
+            
+            ge = get_growth_engine()
+            res = ge.run_full_organic_growth_cycle(analyst)
+            log_event(f"📈 Organik Büyüme: @{res.get('target')} takipçilerinden {res.get('follows_sent')} kişi takip edildi, {res.get('likes_sent')} tweet beğenildi.", "success")
+            
+            # Sleep 60-90 minutes between growth sprints for safety
+            sleep_sec = random.randint(3600, 5400)
+            for _ in range(sleep_sec):
+                if not growth_worker_running:
+                    break
+                time.sleep(1)
+        except Exception:
+            time.sleep(120)
+
+@app.get("/api/growth/status")
+async def get_growth_status():
+    ge = get_growth_engine()
+    s = ge.state
+    return {
+        "is_running": growth_worker_running,
+        "auto_enabled": s.get("auto_growth_enabled", False),
+        "total_followed": s.get("total_followed", 0),
+        "total_liked": s.get("total_liked", 0),
+        "cycles_run": s.get("cycles_run", 0),
+        "current_followers": s.get("current_followers", 0),
+        "last_activity": s.get("last_activity", "Henüz aktivite yok."),
+        "targets": s.get("targets", []),
+        "state": s
+    }
+
+class GrowthTriggerPayload(BaseModel):
+    account: Optional[str] = "Borsagenci"
+    target: Optional[str] = None
+
+@app.post("/api/growth/trigger_now")
+async def trigger_growth_now(payload: GrowthTriggerPayload, background_tasks: BackgroundTasks):
+    account = (payload.account or "Borsagenci").strip().lstrip("@")
+    target = payload.target.strip().lstrip("@") if payload.target else None
+    
+    def run_sprint():
+        ge = get_growth_engine()
+        if target:
+            res = ge.follow_target_followers(account, target, max_follows=12)
+            log_event(f"🎯 @{target} takipçilerinden {res.get('count', 0)} aktif yatırımcı takip edildi!", "success")
+        else:
+            res = ge.run_full_organic_growth_cycle(account)
+            log_event(f"🚀 Organik büyüme döngüsü tamamlandı: {res.get('follows_sent')} takip, {res.get('likes_sent')} beğeni.", "success")
+
+    background_tasks.add_task(run_sprint)
+    return {"success": True, "message": "Organik takipçi kasma döngüsü arka planda başlatıldı!"}
+
+class GrowthTogglePayload(BaseModel):
+    enabled: bool
+
+@app.post("/api/growth/toggle_auto")
+async def toggle_growth_auto(payload: GrowthTogglePayload):
+    global growth_worker_running, growth_worker_thread
+    ge = get_growth_engine()
+    ge.state["auto_growth_enabled"] = payload.enabled
+    ge._save_state()
+
+    if payload.enabled and not growth_worker_running:
+        growth_worker_running = True
+        growth_worker_thread = threading.Thread(target=growth_background_worker, daemon=True)
+        growth_worker_thread.start()
+        log_event("🚀 7/24 Otomatik Organik Takipçi Kasma AÇILDI (Günde ~60-90 Takipçi Hedefi)", "success")
+    elif not payload.enabled and growth_worker_running:
+        growth_worker_running = False
+        log_event("🚀 Otomatik Takipçi Kasma DURDURULDU", "warning")
+
+    return {"success": True, "running": growth_worker_running}
 
 if __name__ == "__main__":
     import uvicorn
