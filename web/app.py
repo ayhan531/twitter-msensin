@@ -1423,13 +1423,17 @@ async def trigger_growth_now(payload: GrowthTriggerPayload, background_tasks: Ba
     target = payload.target.strip().lstrip("@") if payload.target else None
     
     def run_sprint():
-        ge = get_growth_engine()
-        if target:
-            res = ge.follow_target_followers(account, target, max_follows=12)
-            log_event(f"🎯 @{target} takipçilerinden {res.get('count', 0)} aktif yatırımcı takip edildi!", "success")
-        else:
-            res = ge.run_full_organic_growth_cycle(account)
-            log_event(f"🚀 Organik büyüme döngüsü tamamlandı: {res.get('follows_sent')} takip, {res.get('likes_sent')} beğeni.", "success")
+        try:
+            ge = get_growth_engine()
+            if target:
+                res = ge.follow_target_followers(account, target, max_follows=12)
+                log_event(f"🎯 @{target} takipçilerinden {res.get('count', 0)} kişi takip edildi! Hata: {res.get('error','')}", "success" if res.get("success") else "error")
+            else:
+                res = ge.run_full_organic_growth_cycle(account)
+                err_info = f" | Hata: {res.get('follow_error') or res.get('like_error','')}" if (res.get('follow_error') or res.get('like_error')) else ""
+                log_event(f"🚀 Büyüme döngüsü #{res.get('cycles_run',0)} tamamlandı: {res.get('follows_sent',0)} takip, {res.get('likes_sent',0)} beğeni.{err_info}", "success")
+        except Exception as ex:
+            log_event(f"❌ Büyüme döngüsü HATA: {ex}", "error")
 
     background_tasks.add_task(run_sprint)
     return {"success": True, "message": "Organik takipçi kasma döngüsü arka planda başlatıldı!"}
