@@ -383,8 +383,14 @@ def execute_scheduled_task(source: str = "Zamanlayıcı") -> dict:
     helpers = [a.get("username") for a in accounts if a.get("username") != analyst and browser_mgr.has_session(a.get("username"))]
 
     if not browser_mgr.has_session(analyst):
-        log_event(f"[{source}] @{analyst} için oturum hazır değil.", "error")
-        return {"success": False, "error": f"@{analyst} için oturum hazır değil"}
+        # Otomatik restore dene
+        acc_data = next((a for a in accounts if a.get("username","").lower() == analyst.lower()), None)
+        if acc_data and acc_data.get("auth_token"):
+            browser_mgr.create_session_from_cookies(analyst, acc_data["auth_token"], acc_data.get("ct0",""))
+            log_event(f"[{source}] @{analyst} session otomatik restore edildi.", "info")
+        else:
+            log_event(f"[{source}] @{analyst} için oturum hazır değil.", "error")
+            return {"success": False, "error": f"@{analyst} için oturum hazır değil"}
 
     # 1. Select Asset Symbol
     stock_sym = sched.get("stock_symbol", "auto_rotate")
@@ -449,22 +455,43 @@ def execute_scheduled_task(source: str = "Zamanlayıcı") -> dict:
         tweet_text = ai_gen.generate_chart_tweet(analysis, persona_key=persona_key)
         log_event(f"⏰ [{source}] @{analyst} #{stock_sym} TradingView mum grafiğiyle analiz paylaşıyor...", "info")
 
-    # 4. Post & Cross-Boost
+    # 4. Post & Cross-Boost — thread-safe: kendi sync_playwright() aciyor
     auto_boost = sched.get("auto_boost", True)
-    pod_mgr = EngagementPodManager(browser_mgr, ai_gen)
-    if auto_boost and helpers:
-        res = pod_mgr.post_and_cross_boost(analyst, helpers, custom_tweet=tweet_text, media_path=media_path, headless=True)
-        log_event(f"✅ [{source}] Tweet paylaşıldı ve {len(helpers)} hesapla karşılıklı kasıldı!", "success")
+    from playwright.sync_api import sync_playwright as _sp_sched
+    import json as _json_sched
+
+    def _do_tweet_in_own_playwright(uname: str, tweet_text: str, media_path):
+        cookies = []
+        sf = browser_mgr.get_session_file(uname)
+        if sf.exists():
+            with open(sf, "r", encoding="utf-8") as _f:
+                cookies = _json_sched.load(_f).get("cookies", [])
+        with _sp_sched() as pw:
+            brw = pw.chromium.launch(
+                headless=True,
+                args=["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-gpu",
+                      "--disable-blink-features=AutomationControlled",
+                      "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"]
+            )
+            ctx = brw.new_context(viewport={"width":1280,"height":900}, locale="tr-TR", timezone_id="Europe/Istanbul")
+            if cookies:
+                ctx.add_cookies(cookies)
+            pg = ctx.new_page()
+            try:
+                acts = TwitterActions(pg)
+                result = acts.post_tweet(tweet_text, media_path=media_path)
+                return result
+            finally:
+                try: ctx.close()
+                except Exception: pass
+                try: brw.close()
+                except Exception: pass
+
+    res = _do_tweet_in_own_playwright(analyst, tweet_text, media_path)
+    if res and res.get("success"):
+        log_event(f"✅ [{source}] Tweet basariyla paylasıldi: {tweet_text[:60]}...", "success")
     else:
-        ctx = browser_mgr.launch_context(analyst, headless=True)
-        try:
-            page = ctx.new_page()
-            actions = TwitterActions(page)
-            res = actions.post_tweet(tweet_text, media_path=media_path)
-            if res.get("success"):
-                log_event(f"✅ [{source}] Tweet başarıyla paylaşıldı!", "success")
-        finally:
-            ctx.close()
+        log_event(f"❌ [{source}] Tweet gonderilemedi: {res.get('error','Bilinmeyen hata') if res else 'None response'}", "error")
 
     # 5. Check Watchlist Targets
     watchlist = cfg.get("watchlist", [])
