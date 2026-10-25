@@ -1221,29 +1221,44 @@ async def post_tweet_endpoint(payload: PostTweetPayload, background_tasks: Backg
     log_event(f"@{uname} üzerinden tweet gönderimi başlatılıyor{' (Grafikli)' if media_file_path else ''}...", "info")
 
     def run_post_and_boost():
-        cfg = get_config()
-        helpers = [a.get("username") for a in cfg.get("accounts", []) if a.get("username") != uname and browser_mgr.has_session(a.get("username"))]
-        ai_gen = get_ai_generator()
-        pod_mgr = EngagementPodManager(browser_mgr, ai_gen)
-        
-        if payload.auto_boost and helpers:
-            res = pod_mgr.post_and_cross_boost(uname, helpers, custom_tweet=payload.text, media_path=media_file_path, headless=True)
-            log_event(f"Tweet paylaşıldı ve {len(helpers)} hesapla kasıldı!", "success")
-        else:
-            context = browser_mgr.launch_context(uname, headless=True)
-            try:
+        from playwright.sync_api import sync_playwright as _sp
+        try:
+            cookies = []
+            session_file = browser_mgr.get_session_file(uname)
+            if session_file.exists():
+                import json as _json
+                with open(session_file, "r", encoding="utf-8") as _f:
+                    cookies = _json.load(_f).get("cookies", [])
+
+            with _sp() as pw:
+                browser = pw.chromium.launch(
+                    headless=True,
+                    args=["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage","--disable-gpu",
+                          "--disable-blink-features=AutomationControlled",
+                          "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"]
+                )
+                context = browser.new_context(viewport={"width":1280,"height":900}, locale="tr-TR", timezone_id="Europe/Istanbul")
+                if cookies:
+                    context.add_cookies(cookies)
                 page = context.new_page()
-                actions = TwitterActions(page)
-                res = actions.post_tweet(payload.text, media_path=media_file_path)
-                if res.get("success"):
-                    log_event(f"Tweet başarıyla paylaşıldı: {payload.text[:50]}...", "success")
-                else:
-                    log_event(f"Tweet gönderilemedi: {res.get('error')}", "error")
-            finally:
                 try:
-                    context.close()
-                except Exception:
-                    pass
+                    actions = TwitterActions(page)
+                    res = actions.post_tweet(payload.text, media_path=media_file_path)
+                    if res.get("success"):
+                        log_event(f"Tweet basariyla paylasıldi: {payload.text[:60]}...", "success")
+                    else:
+                        log_event(f"Tweet gonderilemedi: {res.get('error','Bilinmeyen hata')}", "error")
+                finally:
+                    try:
+                        context.close()
+                    except Exception:
+                        pass
+                    try:
+                        browser.close()
+                    except Exception:
+                        pass
+        except Exception as ex:
+            log_event(f"Tweet posting HATA: {ex}", "error")
 
     background_tasks.add_task(run_post_and_boost)
     return {"success": True, "message": "Tweet gönderim ve kasma işlemi arka planda başlatıldı"}
