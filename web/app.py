@@ -1200,8 +1200,15 @@ class PostTweetPayload(BaseModel):
 @app.post("/api/tweet/post")
 async def post_tweet_endpoint(payload: PostTweetPayload, background_tasks: BackgroundTasks):
     uname = payload.account.strip().lstrip("@")
+    # Ensure session exists - restore from token if missing
     if not browser_mgr.has_session(uname):
-        return JSONResponse({"success": False, "error": f"@{uname} için aktif oturum yok. Önce bağlayın."}, status_code=400)
+        cfg = get_config()
+        acc = next((a for a in cfg.get("accounts", []) if a.get("username", "").lower() == uname.lower()), None)
+        if acc and acc.get("auth_token"):
+            browser_mgr.create_session_from_cookies(uname, acc["auth_token"], acc.get("ct0", ""))
+            log_event(f"@{uname} oturumu tweet öncesi yeniden oluşturuldu.", "info")
+        else:
+            return JSONResponse({"success": False, "error": f"@{uname} için aktif oturum yok."}, status_code=400)
 
     # Prepare chart image if requested
     media_file_path = None
@@ -1233,8 +1240,10 @@ async def post_tweet_endpoint(payload: PostTweetPayload, background_tasks: Backg
                 else:
                     log_event(f"Tweet gönderilemedi: {res.get('error')}", "error")
             finally:
-                context.close()
-                browser_mgr.stop()
+                try:
+                    context.close()
+                except Exception:
+                    pass
 
     background_tasks.add_task(run_post_and_boost)
     return {"success": True, "message": "Tweet gönderim ve kasma işlemi arka planda başlatıldı"}
