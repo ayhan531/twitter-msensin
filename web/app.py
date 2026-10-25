@@ -554,6 +554,16 @@ async def startup_event():
         start_scheduler_worker()
     if cfg.get("telegram", {}).get("enabled", False):
         get_telegram_bridge().start()
+    # Auto-start growth engine if it was enabled before restart
+    ge = get_growth_engine()
+    if ge.state.get("auto_growth_enabled", False):
+        global growth_worker_running, growth_worker_thread
+        if not growth_worker_running:
+            growth_worker_running = True
+            growth_worker_thread = threading.Thread(target=growth_background_worker, daemon=True)
+            growth_worker_thread.start()
+            log_event("🌱 Büyüme Motoru otomatik olarak yeniden başlatıldı (restart sonrası)", "success")
+    log_event("🚀 Sistem başlatıldı, servisler hazır.", "info")
 
 # ----------------- ROUTES -----------------
 
